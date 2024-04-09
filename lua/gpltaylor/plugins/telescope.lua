@@ -28,7 +28,7 @@ return {
         mappings = {
           i = {
             ["<C-k>"] = actions.move_selection_previous, -- move to prev result
-            ["<C-j>"] = actions.move_selection_next, -- move to next result
+            ["<C-j>"] = actions.move_selection_next,     -- move to next result
             ["<C-q>"] = actions.send_selected_to_qflist + custom_actions.open_trouble_qflist,
             ["<C-t>"] = trouble_telescope.smart_open_with_trouble,
           },
@@ -46,5 +46,15 @@ return {
     keymap.set("n", "<leader>fs", "<cmd>Telescope live_grep<cr>", { desc = "Find string in cwd" })
     keymap.set("n", "<leader>fc", "<cmd>Telescope grep_string<cr>", { desc = "Find string under cursor in cwd" })
     keymap.set("n", "<leader>ft", "<cmd>TodoTelescope<cr>", { desc = "Find todos" })
+    keymap.set("n", "<leader>fn", function()
+      require 'telescope.builtin'.find_files({
+        search_dirs = { vim.fn.stdpath('config') },
+        hidden = true
+      })
+    end, { desc = "Fuzzy find files in Neovim config", silent = true })
+
   end,
 }
+
+-- test 
+--

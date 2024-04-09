@@ -19,3 +19,4 @@ vim.keymap.set("n", "<leader>fb", vim.lsp.buf.format, { desc = "Format the buffe
 -- Search
 vim.keymap.set("n", "<leader>ss", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
 
+
