@@ -1,0 +1,6 @@
+[submodule "lua/lua/gpltaylor/showcase"]
+	path = lua/lua/gpltaylor/showcase
+	url = git@github.com:gpltaylor/showcase-vim.git
+[submodule "lua/gpltaylor/showcase"]
+	path = lua/gpltaylor/showcase
+	url = git@github.com:gpltaylor/showcase-vim.git
