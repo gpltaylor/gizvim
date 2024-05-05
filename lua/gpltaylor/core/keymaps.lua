@@ -1,4 +1,6 @@
 vim.g.mapleader = " "
+-- Set scrolloff to 5 using Lua in Neovim
+vim.o.scrolloff = 5
 
 local keymap = vim.keymap
 
@@ -19,4 +21,5 @@ vim.keymap.set("n", "<leader>fb", vim.lsp.buf.format, { desc = "Format the buffe
 -- Search
 vim.keymap.set("n", "<leader>ss", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
 
-
+--8 File8 Endcoding8 as8 UTF8
+vim.keymap.set("n", "<leader>utf8", [[:set fileencoding=utf-8<CR>:set encoding=utf-8<CR>]])
