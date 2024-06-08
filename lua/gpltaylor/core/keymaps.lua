@@ -23,3 +23,7 @@ vim.keymap.set("n", "<leader>ss", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left>
 
 --8 File8 Endcoding8 as8 UTF8
 vim.keymap.set("n", "<leader>utf8", [[:set fileencoding=utf-8<CR>:set encoding=utf-8<CR>]])
+
+
+-- Delete a word backwards
+keymap.set("n", "dw", 'vb"_d')
