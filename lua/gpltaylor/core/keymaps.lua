@@ -4,7 +4,7 @@ vim.o.scrolloff = 5
 
 local keymap = vim.keymap
 
-keymap.set("i", "<leader>cc", "<ESC>:w<CR>", { desc = "Exit insert mode" })
+--keymap.set("i", "<leader>cc", "<ESC>:w<CR>", { desc = "Exit insert mode" })
 
 
 -- Move Lines
