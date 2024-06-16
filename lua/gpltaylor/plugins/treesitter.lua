@@ -52,24 +52,14 @@ return {
     },
     config = function()
       require("nvim-treesitter.configs").setup({
+        TSConfig = "",
         ensure_installed = "all",
         highlight = { 
           enable = true,
           additional_vim_regex_highlighting = false,
         },
         compilers = { "clang" },
-        textobjects = {
-          select = {
-            enable = true,
-            keymaps = {
-              ["af"] = "@function.outer",
-              ["if"] = "@function.inner",
-              ["ac"] = "@class.outer",
-              ["ic"] = "@class.inner",
-            },
-          },
-        },
-      })
+        })
     end,
   },
 }
