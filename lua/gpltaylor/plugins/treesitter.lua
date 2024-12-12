@@ -1,4 +1,4 @@
--- require("nvim-treesitter.install").compilers = { "clang" }
+-- require("nvim-treesitter.install").compilers = { "zig" }
 
 return {
   "nvim-treesitter/nvim-treesitter",
@@ -31,6 +31,8 @@ return {
       "yaml",
       "go",
       "csharp",
+      "hcl",
+      "terraform",
     },
     incremental_selection = {
       enable = true,
@@ -51,14 +53,16 @@ return {
       },
     },
     config = function()
+      require "nvim-treesitter.install".compilers = { "zig" }
+
       require("nvim-treesitter.configs").setup({
-        TSConfig = "",
+        TSConfig = "modules",
         ensure_installed = "all",
         highlight = { 
           enable = true,
           additional_vim_regex_highlighting = false,
         },
-        compilers = { "clang" },
+        compilers = { "zig" },
         })
     end,
   },

@@ -1,22 +1,25 @@
 return {
   "OmniSharp/omnisharp-vim",
-  config= function()
+  config = function()
+    -- Create a group for omnisharp keymaps only within .cs files
+    vim.api.nvim_create_augroup('OmniSharpKeymaps', { clear = true })
 
-    vim.keymap.set("n", "<leader>gu", ":OmniSharpFindUsages<cr>", { desc = "Omnishap  - Find References"})
-    -- I want to do to the implementation of a method when jumping - I know this is backwards but so am I
-    vim.keymap.set("n", "<leader>gd", ":OmniSharpFindImplementation<cr>", { desc = "Omnishap  - Find Implementation"})
-    vim.keymap.set("n", "<leader>gs", ":OmniSharpFindSymbol<cr>", { desc = "Omnishap  - Find Symbol"})
+    vim.api.nvim_create_autocmd('FileType', {
+      group = 'OmniSharpKeymaps',
+      pattern = 'cs',
+      callback = function()
+        local opts = { noremap = true, silent = true, buffer = 0 }
+        vim.keymap.set('n', '<leader>gu', ':OmniSharpFindUsages<cr>', { desc = "Omnisharp - Find References", unpack(opts) })
+        vim.keymap.set('n', '<leader>gd', ':OmniSharpFindImplementation<cr>', { desc = "Omnisharp - Find Implementation", unpack(opts) })
+        vim.keymap.set('n', '<leader>gs', ':OmniSharpFindSymbol<cr>', { desc = "Omnisharp - Find Symbol", unpack(opts) })
 
-    vim.keymap.set("n", "<leader>od", ":OmniSharpDocumentation<cr>", { desc = "Omnishap  - Documentation"})
-    vim.keymap.set("n", "<leader>ofi", ":OmniSharpFindImplementation<cr>", { desc = "Omnishap  - Find Implementation"})
-    vim.keymap.set("n", "<leader>ogd", ":OmniSharpGotoDefinition<cr>", { desc = "Omnishap  - Find definition"})
-    vim.keymap.set("n", "<leader>ofs", ":OmniSharpFindSymbol<cr>", { desc = "Omnishap  - Find Symbol"})
-    vim.keymap.set("n", "<leader>ofu", ":OmniSharpFindUsages<cr>", { desc = "Omnishap  - Find References"})
-
-    --OmniSharpGotoDefinition 
-  
---    keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<cr>", { desc = "Fuzzy find files in cwd" })
-
-end
-
+        vim.keymap.set('n', '<leader>od', ':OmniSharpDocumentation<cr>', { desc = "Omnisharp - Documentation", unpack(opts) })
+        vim.keymap.set('n', '<leader>ofi', ':OmniSharpFindImplementation<cr>', { desc = "Omnisharp - Find Implementation", unpack(opts) })
+        vim.keymap.set('n', '<leader>ogd', ':OmniSharpGotoDefinition<cr>', { desc = "Omnisharp - Find definition", unpack(opts) })
+        vim.keymap.set('n', '<leader>ofs', ':OmniSharpFindSymbol<cr>', { desc = "Omnisharp - Find Symbol", unpack(opts) })
+        vim.keymap.set('n', '<leader>ofu', ':OmniSharpFindUsages<cr>', { desc = "Omnisharp - Find References", unpack(opts) })
+      end
+    })
+  end
 }
+

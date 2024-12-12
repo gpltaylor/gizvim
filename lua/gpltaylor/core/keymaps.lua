@@ -27,3 +27,7 @@ vim.keymap.set("n", "<leader>utf8", [[:set fileencoding=utf-8<CR>:set encoding=u
 
 -- Delete a word backwards
 keymap.set("n", "dw", 'vb"_d')
+
+-- highlight the word under the cursor
+vim.keymap.set("n", "<leader>hw", ":lua vim.lsp.buf.document_highlight()<CR>")
+vim.keymap.set("n", "<leader>hc", ":lua vim.lsp.buf.clear_references()<CR>")
