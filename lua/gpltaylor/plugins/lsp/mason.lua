@@ -29,7 +29,6 @@ return {
       -- csharp_ls
       ensure_installed = {
         "terraformls",
-        "tsserver",
         "html",
         "cssls",
         "tailwindcss",
@@ -40,7 +39,6 @@ return {
         "prismals",
         "pyright",
         "gopls",
-        "csharp-language-server",
       },
     })
 

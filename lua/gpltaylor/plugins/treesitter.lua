@@ -30,7 +30,7 @@ return {
       "lua",
       "yaml",
       "go",
-      "csharp",
+      "c_sharp",
       "hcl",
       "terraform",
     },
