@@ -31,3 +31,9 @@ keymap.set("n", "dw", 'vb"_d')
 -- highlight the word under the cursor
 vim.keymap.set("n", "<leader>hw", ":lua vim.lsp.buf.document_highlight()<CR>")
 vim.keymap.set("n", "<leader>hc", ":lua vim.lsp.buf.clear_references()<CR>")
+
+vim.keymap.set("n", "<leader>gR", ": lua require('telescope.builtin').lsp_references()<CR>", { desc = "Find references" })
+vim.keymap.set("n", "<leader>gd", ":lua require('telescope.builtin').lsp_definitions()<CR>", { desc = "Find definitions" })
+vim.keymap.set("n", "<leader>gi", ":lua require('telescope.builtin').lsp_implementations()<CR>", { desc = "Find implementations" })
+
+
