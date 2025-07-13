@@ -10,6 +10,7 @@ return {
       -- Load the configurations below
       require("dap-config")
       local dapui = require("dapui")
+      local dap = require("dap")
 
       dapui.setup()
 
@@ -24,6 +25,22 @@ return {
       dap.listeners.before.event_exited["dapui_config"] = function()
         dapui.close()
       end
+
+      dap.adapters.coreclr = {
+        type = "executable",
+        command = vim.fn.exepath("netcoredbg"),
+        args = { "--interpreter=vscode" },
+      }
+      dap.configurations.cs = {
+        {
+          type = "coreclr",
+          name = "Launch .NET",
+          request = "launch",
+          program = function()
+            return vim.fn.input("Path to dll: ", vim.fn.getcwd() .. "/bin/Debug/net7.0/", "file")
+          end,
+        },
+      }
     end,
   },
 
