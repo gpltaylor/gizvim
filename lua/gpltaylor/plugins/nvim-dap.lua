@@ -26,21 +26,6 @@ return {
         dapui.close()
       end
 
-      dap.adapters.coreclr = {
-        type = "executable",
-        command = vim.fn.exepath("netcoredbg"),
-        args = { "--interpreter=vscode" },
-      }
-      dap.configurations.cs = {
-        {
-          type = "coreclr",
-          name = "Launch .NET",
-          request = "launch",
-          program = function()
-            return vim.fn.input("Path to dll: ", vim.fn.getcwd() .. "/bin/Debug/net7.0/", "file")
-          end,
-        },
-      }
     end,
   },
 

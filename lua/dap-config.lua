@@ -17,7 +17,7 @@ dap.configurations.cs = {
     request = "launch",
     program = function()
       -- return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/net9.0/", "file")
-      return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/", "file") 
+      return vim.fn.input("A3) Path to DLL >> ", vim.fn.getcwd() .. "/bin/Debug/", "file") 
     end,
     cwd = vim.fn.getcwd,
     env = {
@@ -29,6 +29,7 @@ dap.configurations.cs = {
     type = "coreclr",
     name = "Attach to process",
     request = "attach",
+    justMyCode = false,
     processId = function()
       local input = vim.fn.input("Enter process ID: ")
       return tonumber(input)

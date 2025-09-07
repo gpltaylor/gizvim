@@ -52,5 +52,7 @@ return {
 
       -- configure lspkind for vs-code like pictograms in completion menu
     })
+
+    cmp.visible_docs()
   end,
 }

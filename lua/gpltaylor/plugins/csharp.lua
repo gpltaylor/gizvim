@@ -38,7 +38,8 @@ return {
           sdk_include_prereleases = true,
           enable_import_completion = true,
           enable_debugging = true,
-          enable_decompilation_support = true,
+          enable_decompilation_support = true, 
+          capabilities = require("cmp_nvim_lsp").default_capabilities(),
           -- Telescope keymaps for .cs files
           keys = {
             { "gd", function() require("telescope.builtin").lsp_definitions() end, desc = "Telescope: Go to Definition" },
@@ -87,7 +88,7 @@ return {
         {
           type = "coreclr", name = "Launch .NET", request = "launch",
           program = function()
-            return vim.fn.input("Path to dll: ", vim.fn.getcwd() .. "/bin/Debug/net7.0/", "file")
+            return vim.fn.input("A1) Path to dll: ", vim.fn.getcwd() .. "/bin/Debug/net7.0/", "file")
           end,
         },
       }
