@@ -1,9 +1,20 @@
 local M = {}
 
--- Safe single-location jump, avoids crashes when buffer is empty (e.g., metadata virtual files)
+-- Safe single-location jump, with C# source resolution
 M.safe_jump_to_location = function(location, offset_encoding)
   local uri = location.uri or location.targetUri
   local range = location.range or location.targetSelectionRange
+
+  -- Try enhanced C# source resolution for metadata URIs
+  if uri and uri:match("^csharp:/metadata/") then
+    local csharp_resolver = require("utils.csharp_source_resolver")
+    local success = csharp_resolver.enhanced_jump_to_location(location, offset_encoding)
+    if success then
+      -- Source resolution succeeded, don't execute fallback logic
+      return
+    end
+    -- If resolver failed, continue with normal behavior below
+  end
 
   local bufnr = vim.uri_to_bufnr(uri)
   vim.fn.bufload(bufnr)

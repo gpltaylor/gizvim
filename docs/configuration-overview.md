@@ -89,6 +89,11 @@ omnisharp = {
 }
 ```
 
+**Enhanced Features**:
+- **NuGet Source Resolution**: Automatically jumps to actual source code instead of metadata files
+- **RedBear Package Support**: Intelligent mapping to local RedBear source repositories
+- **Telescope Integration**: Browse and search source files across assemblies
+
 ### Go (gopls)
 ```lua
 gopls = {
@@ -162,6 +167,8 @@ Each language has its own plugin file that configures:
 - Shared utilities in `utils/` directory
 - Language-agnostic helper functions
 - Reusable patterns for LSP navigation
+- **C# source resolution** for NuGet packages
+- **Go project structure** detection
 
 ## Configuration Philosophy
 

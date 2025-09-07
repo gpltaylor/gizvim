@@ -74,8 +74,70 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.keymap.set("n", "<F7>", ":lua require'dap'.step_over()<CR>", opts)         -- Step Over
     vim.keymap.set("n", "<F8>", ":lua require'dap'.step_into()<CR>", opts)         -- Step Into
     vim.keymap.set("n", "<F9>", ":lua require'dap'.terminate()<CR>", opts)         -- Stop Debugging
+
+    -- C#-specific source navigation
+    vim.keymap.set("n", "<leader>csf", function()
+      require("utils.csharp_source_resolver").telescope_find_source()
+    end, vim.tbl_extend("force", opts, { desc = "Find C# source with Telescope" }))
+    
+    vim.keymap.set("n", "<leader>csm", function()
+      require("utils.csharp_source_resolver").add_source_mapping()
+    end, vim.tbl_extend("force", opts, { desc = "Add source mapping" }))
+    
+    vim.keymap.set("n", "<leader>csg", function()
+      require("utils.csharp_source_resolver").add_github_mapping()
+    end, vim.tbl_extend("force", opts, { desc = "Add GitHub mapping" }))
+    
+    vim.keymap.set("n", "<leader>csd", function()
+      require("utils.csharp_source_resolver").force_download_source()
+    end, vim.tbl_extend("force", opts, { desc = "Download source from GitHub" }))
+    
+    vim.keymap.set("n", "<leader>csc", function()
+      require("utils.csharp_source_resolver").clear_source_cache()
+    end, vim.tbl_extend("force", opts, { desc = "Clear source cache" }))
+    
+    vim.keymap.set("n", "<leader>css", function()
+      require("utils.csharp_source_resolver").show_mappings()
+    end, vim.tbl_extend("force", opts, { desc = "Show source mappings" }))
   end,
 })
+
+-- C# Source Resolution Commands (available globally)
+vim.api.nvim_create_user_command("CSharpFindSource", function(opts)
+  require("utils.csharp_source_resolver").telescope_find_source(opts.args)
+end, { 
+  nargs = "?", 
+  desc = "Find C# source files using Telescope",
+  complete = function()
+    -- Return common RedBear package names for completion
+    return {
+      "RedBear.Common.Containers",
+      "RedBear.Common.Core",
+      "RedBear.Common.Extensions",
+      "RedBear.Common.Logging",
+    }
+  end
+})
+
+vim.api.nvim_create_user_command("CSharpAddMapping", function()
+  require("utils.csharp_source_resolver").add_source_mapping()
+end, { desc = "Add a custom C# source mapping" })
+
+vim.api.nvim_create_user_command("CSharpAddGitHub", function()
+  require("utils.csharp_source_resolver").add_github_mapping()
+end, { desc = "Add a GitHub source mapping" })
+
+vim.api.nvim_create_user_command("CSharpDownload", function()
+  require("utils.csharp_source_resolver").force_download_source()
+end, { desc = "Download C# source from GitHub" })
+
+vim.api.nvim_create_user_command("CSharpClearCache", function()
+  require("utils.csharp_source_resolver").clear_source_cache()
+end, { desc = "Clear downloaded source cache" })
+
+vim.api.nvim_create_user_command("CSharpShowMappings", function()
+  require("utils.csharp_source_resolver").show_mappings()
+end, { desc = "Show all C# source mappings" })
 
 -- Go specific keymaps (mirroring C# setup)
 vim.api.nvim_create_autocmd("FileType", {

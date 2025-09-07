@@ -13,13 +13,20 @@ Complete overview of your Neovim configuration architecture, including:
 - Key design patterns and philosophies
 - Plugin dependencies and relationships
 
+#### [`csharp-source-resolution.md`](./csharp-source-resolution.md)
+**NEW**: Enhanced C# development with NuGet source resolution:
+- Automatic jumping to actual source code instead of metadata
+- RedBear package integration
+- Custom source mappings
+- Telescope-based source browsing
+
 #### [`go-development-setup.md`](./go-development-setup.md)
 Detailed documentation of the Go development environment:
 - LSP configuration (gopls)
 - Debugging setup (delve)
 - Enhanced tooling (ray-x/go.nvim)
 - Complete keymap reference
-- Feature comparison with C# setup
+- Project structure support (including `/src/` folders)
 
 ### 🚀 Getting Started
 
@@ -46,10 +53,10 @@ Roadmap for future enhancements:
 Your Neovim setup now provides consistent, professional development environments for:
 
 ### C# Development
-- **LSP**: OmniSharp with extended handlers
+- **LSP**: OmniSharp with extended handlers + **NuGet source resolution**
 - **Debugging**: netcoredbg via DAP
 - **Formatting**: csharpier
-- **Features**: Definition jumping, references, debugging
+- **Features**: Definition jumping to actual source, references, debugging
 
 ### Go Development  
 - **LSP**: gopls with comprehensive analysis
@@ -64,10 +71,17 @@ Your Neovim setup now provides consistent, professional development environments
 - Same function key mappings (F1-F9) for debugging
 - Unified formatting commands
 
-### ✅ Safe Navigation
-- Custom LSP jump patch handles edge cases
-- Telescope integration for multiple results
-- Graceful error handling
+### ✅ Enhanced C# Development
+- **NuGet Source Resolution** - Jump to actual source code instead of metadata
+- **GitHub Integration** - Automatically download Microsoft.Extensions.*, ASP.NET Core, and other public packages
+- **RedBear Package Support** - Automatic mapping to local source repositories
+- **Smart Caching** - Downloaded sources persist between sessions
+- **Browser Fallback** - Opens GitHub page when download fails
+
+### ✅ Smart Project Structure
+- **Go**: Automatic detection of `/src/`, `/cmd/`, `/app/` folders
+- **C#**: NuGet source resolution with local repository mapping
+- **Universal**: Project-aware build and run commands
 
 ### ✅ Comprehensive Tooling
 - Automatic tool installation via Mason
@@ -99,6 +113,15 @@ Your Neovim setup now provides consistent, professional development environments
 | `<F7>` | Step Over |
 | `<F8>` | Step Into |
 | `<F9>` | Terminate |
+
+### C#-Specific Features
+| Key | Action |
+|-----|--------|
+| `<leader>csf` | Find source files in assembly |
+| `<leader>csm` | Add source mapping |
+| `<leader>csg` | Add GitHub mapping |
+| `<leader>csd` | Download source from GitHub |
+| `<leader>css` | Show source mappings |
 
 ### Go-Specific Features
 | Key | Action |
