@@ -47,8 +47,14 @@ return {
         "prettier", -- prettier formatter
         "stylua",   -- lua formatter
         "eslint_d",
-        "delve",
-        "gopls"
+        "delve",    -- Go debugger
+        "gopls",    -- Go language server
+        "gofumpt",  -- Go formatter
+        "goimports", -- Go imports organizer
+        "golangci-lint", -- Go linter
+        "gomodifytags", -- Go struct tag modifier
+        "gotests",      -- Go test generator
+        "impl",         -- Go interface implementation generator
       },
     })
   end,

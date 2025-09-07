@@ -1,13 +1,5 @@
-return {
-  "ray-x/go.nvim",
-  dependencies = {  -- optional packages
-    "ray-x/guihua.lua",
-    "neovim/nvim-lspconfig",
-  },
-  config = function()
-    require("go").setup()
-  end,
-  event = {"CmdlineEnter"},
-  ft = {"go", 'gomod'},
-  build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
-}
+-- This file has been replaced by lua/gpltaylor/plugins/golang.lua
+-- The new configuration provides a more comprehensive Go development environment
+-- that mirrors the C# setup with consistent keymaps and debugging support.
+
+return {}
