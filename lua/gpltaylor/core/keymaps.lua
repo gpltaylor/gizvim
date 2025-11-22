@@ -69,7 +69,35 @@ vim.api.nvim_create_autocmd("FileType", {
 
     -- Debugging keymaps
     vim.keymap.set("n", "<F2>", ":lua require'dap'.toggle_breakpoint()<CR>", opts) -- Toggle Breakpoint
-    vim.keymap.set("n", "<F1>", ":lua require'dapui'.toggle()<CR>", opts)          -- Toggle I
+    vim.keymap.set("n", "<F1>", ":lua require'dapui'.toggle()<CR>", opts)          -- Toggle DAP UI
+    vim.keymap.set("n", "<F5>", function()
+      local vimspector_utils = require("utils.vimspector_config")
+      local dap = require("dap")
+      
+      -- Check if we have vimspector config
+      if vimspector_utils.has_vimspector_config() then
+        -- Try quick launch first
+        local main_dll = vimspector_utils.find_main_dll()
+        if main_dll then
+          vim.notify("🚀 Quick launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
+          -- Create a quick launch config
+          local quick_config = {
+            type = "coreclr",
+            name = "Quick Launch",
+            request = "launch",
+            program = main_dll,
+            cwd = vim.fn.getcwd(),
+            env = { ASPNETCORE_ENVIRONMENT = 'Development' },
+            justMyCode = false,
+          }
+          dap.run(quick_config)
+          return
+        end
+      end
+      
+      -- Fallback to normal continue (shows selection menu)
+      dap.continue()
+    end, vim.tbl_extend("force", opts, { desc = "Quick Launch or Debug Menu" }))
     vim.keymap.set("n", "<F6>", ":lua require'dap'.continue()<CR>", opts)          -- Start/Continue
     vim.keymap.set("n", "<F7>", ":lua require'dap'.step_over()<CR>", opts)         -- Step Over
     vim.keymap.set("n", "<F8>", ":lua require'dap'.step_into()<CR>", opts)         -- Step Into
@@ -171,6 +199,10 @@ vim.api.nvim_create_autocmd("FileType", {
     -- Debugging keymaps (same function keys as C#)
     vim.keymap.set("n", "<F2>", ":lua require'dap'.toggle_breakpoint()<CR>", opts) -- Toggle Breakpoint
     vim.keymap.set("n", "<F1>", ":lua require'dapui'.toggle()<CR>", opts)          -- Toggle DAP UI
+    vim.keymap.set("n", "<F5>", function()
+      local go_utils = require("utils.go_utils")
+      go_utils.debug_go_smart()
+    end, vim.tbl_extend("force", opts, { desc = "Smart Go Debug" }))
     vim.keymap.set("n", "<F6>", ":lua require'dap'.continue()<CR>", opts)          -- Start/Continue
     vim.keymap.set("n", "<F7>", ":lua require'dap'.step_over()<CR>", opts)         -- Step Over
     vim.keymap.set("n", "<F8>", ":lua require'dap'.step_into()<CR>", opts)         -- Step Into

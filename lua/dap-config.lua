@@ -1,4 +1,5 @@
 local dap = require("dap")
+local vimspector_utils = require("utils.vimspector_config")
 
 -- Configure the .NET Core Debug Adapter
 dap.adapters.coreclr = {
@@ -7,35 +8,81 @@ dap.adapters.coreclr = {
   args = { "--interpreter=vscode" },
 }
 
--- Set up C# configurations
--- $env:VSTEST_HOST_DEBUG=1
--- dotnet test --filter FullyQualifiedName~GplTaylor.Lua.Tests --logger "console;verbosity=detailed" --no-build --no-restore
-dap.configurations.cs = {
-  {
-    type = "coreclr",
-    name = "Launch - Console",
-    request = "launch",
-    program = function()
-      -- return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/net9.0/", "file")
-      return vim.fn.input("A3) Path to DLL >> ", vim.fn.getcwd() .. "/bin/Debug/", "file") 
-    end,
-    cwd = vim.fn.getcwd,
-    env = {
-      ASPNETCORE_ENVIRONMENT = 'Development'
+-- Function to get C# configurations with vimspector.json support
+local function get_cs_configurations()
+  -- First, try to load configurations from .vimspector.json
+  local project_configs = vimspector_utils.get_project_configs()
+  
+  if #project_configs > 0 then
+    -- Add a quick launch option at the top
+    table.insert(project_configs, 1, {
+      type = "coreclr",
+      name = "🚀 Quick Launch (Auto-detect)",
+      request = "launch",
+      program = function()
+        local main_dll = vimspector_utils.find_main_dll()
+        if main_dll then
+          return main_dll
+        end
+        return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+      end,
+      cwd = vim.fn.getcwd,
+      env = {
+        ASPNETCORE_ENVIRONMENT = 'Development'
+      },
+      justMyCode = false,
+    })
+    
+    return project_configs
+  end
+  
+  -- Fallback to default configurations if no .vimspector.json
+  return {
+    {
+      type = "coreclr",
+      name = "🚀 Quick Launch (Auto-detect)",
+      request = "launch",
+      program = function()
+        local main_dll = vimspector_utils.find_main_dll()
+        if main_dll then
+          return main_dll
+        end
+        return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+      end,
+      cwd = vim.fn.getcwd,
+      env = {
+        ASPNETCORE_ENVIRONMENT = 'Development'
+      },
+      justMyCode = false,
     },
-    justMyCode = false,
-  },
-  {
-    type = "coreclr",
-    name = "Attach to process",
-    request = "attach",
-    justMyCode = false,
-    processId = function()
-      local input = vim.fn.input("Enter process ID: ")
-      return tonumber(input)
-    end
+    {
+      type = "coreclr",
+      name = "Launch - Select DLL",
+      request = "launch",
+      program = function()
+        return vim.fn.input("Path to DLL > ", vim.fn.getcwd() .. "/bin/Debug/", "file") 
+      end,
+      cwd = vim.fn.getcwd,
+      env = {
+        ASPNETCORE_ENVIRONMENT = 'Development'
+      },
+      justMyCode = false,
+    },
+    {
+      type = "coreclr",
+      name = "Attach to process",
+      request = "attach",
+      justMyCode = false,
+      processId = function()
+        local input = vim.fn.input("Enter process ID: ")
+        return tonumber(input)
+      end
+    }
   }
-}
+end
+
+-- Set up C# configurations
+dap.configurations.cs = get_cs_configurations()
 
 -- Configure the Go Debug Adapter (Delve)
 dap.adapters.delve = {

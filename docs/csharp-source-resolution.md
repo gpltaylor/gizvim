@@ -219,7 +219,7 @@ JsonConvert.SerializeObject(data); // Cursor on SerializeObject
 ## File Structure Support
 
 The resolver handles various project structures:
-
+C:\Users\GarryTaylor\AppData\Local\nvim\docs\csharp-source-resolution.md
 ```
 RedBear.Common.Containers/
 ├── ContainerLifecycle.cs          # Root level
