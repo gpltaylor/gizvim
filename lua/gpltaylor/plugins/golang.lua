@@ -17,6 +17,7 @@ return {
         "gopls",           -- Go language server
         "delve",           -- Go debugger
         "gofumpt",         -- Go formatter
+        "golines",         -- Go line formatter (for max_line_len)
         "goimports",       -- Go imports organizer
         "golangci-lint",   -- Go linter
         "gomodifytags",    -- Go struct tag modifier
@@ -105,14 +106,17 @@ return {
     config = function()
       require("go").setup({
         goimports = "gopls", -- Use gopls for imports
-        gofmt = "gofumpt",   -- Use gofumpt for formatting
-        max_line_len = 120,
+        gofmt = "golines",   -- Use golines for formatting to make max_line_len work
+        max_line_len = 120,  -- This only works with golines
         tag_transform = false,
         test_dir = "",
         comment_placeholder = "   ",
-        lsp_cfg = false, -- Don't override LSP config
+        lsp_cfg = true, -- Enable LSP config integration
         lsp_gofumpt = true,
-        lsp_on_attach = true,
+        lsp_on_attach = function(client, bufnr)
+          -- Custom on_attach function to avoid conflicts
+          require('go.lsp').on_attach(client, bufnr)
+        end,
         dap_debug = true,
         dap_debug_gui = true,
         dap_debug_keymap = true,

@@ -1,6 +1,15 @@
 # Neovim Configuration Documentation
 
-This directory contains comprehensive documentation for your Neovim development environment configuration.
+This directory contains documentation for this Neovim configuration.
+
+## Requirements / Dependencies
+
+Before using this config on a new machine, read:
+- **[`requirements.md`](./requirements.md)**
+
+It covers the external dependencies needed for:
+- `nvim-treesitter` (tree-sitter CLI + a C compiler toolchain)
+- `markdown-preview.nvim` (Node.js + npm)
 
 ## Documentation Files
 

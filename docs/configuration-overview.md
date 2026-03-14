@@ -134,7 +134,8 @@ gopls = {
 - `mason.nvim` - Package manager for LSP servers, formatters, linters
 - `nvim-dap` - Debug Adapter Protocol client
 - `telescope.nvim` - Fuzzy finder integration
-- `nvim-treesitter` - Syntax highlighting and text objects
+- `nvim-treesitter` - Syntax highlighting and text objects (**requires external deps**; see `docs/requirements.md`)
+- `iamcco/markdown-preview.nvim` - Markdown preview (**requires Node.js/npm**; see `docs/requirements.md`)
 
 ### Language-Specific Dependencies
 
