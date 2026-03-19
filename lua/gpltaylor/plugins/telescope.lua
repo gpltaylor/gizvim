@@ -25,6 +25,38 @@ return {
     telescope.setup({
       defaults = {
         path_display = { "smart" },
+        -- Use a Windows-compatible buffer previewer
+        buffer_previewer_maker = function(filepath, bufnr, opts)
+          opts = opts or {}
+          
+          filepath = vim.fn.expand(filepath)
+          
+          -- Read file content directly with Lua instead of using external commands
+          local lines = {}
+          local file = io.open(filepath, "r")
+          if file then
+            for line in file:lines() do
+              table.insert(lines, line)
+            end
+            file:close()
+            
+            -- Set buffer content
+            vim.schedule(function()
+              vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+              
+              -- Set filetype for basic syntax highlighting
+              local ft = vim.filetype.match({ filename = filepath })
+              if ft then
+                vim.api.nvim_buf_set_option(bufnr, 'filetype', ft)
+              end
+            end)
+          else
+            -- Fallback if file can't be read
+            vim.schedule(function()
+              vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {"[Error: Cannot read file]"})
+            end)
+          end
+        end,
         mappings = {
           i = {
             ["<C-k>"] = actions.move_selection_previous, -- move to prev result
@@ -55,6 +87,3 @@ return {
 
   end,
 }
-
--- test 
---
