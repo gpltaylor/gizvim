@@ -47,23 +47,27 @@ vim.api.nvim_create_autocmd("FileType", {
     local jump = require("utils.lsp_jump_patch")
 
     vim.keymap.set("n", "<leader>gR", function()
-      local params = vim.lsp.util.make_position_params()
+      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
 
       vim.lsp.buf_request(0, "textDocument/references", params, jump.make_handler("LSP References"))
     end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Find References" }))
 
     vim.keymap.set("n", "<leader>gd", function()
-      local params = vim.lsp.util.make_position_params()
+      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/definition", params, jump.make_handler("LSP Definitions"))
     end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Definition" }))
 
     vim.keymap.set("n", "<leader>gi", function()
-      local params = vim.lsp.util.make_position_params()
+      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/implementation", params, jump.make_handler("LSP Implementations"))
     end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Implementation" }))
 
     vim.keymap.set("n", "<leader>gt", function()
-      local params = vim.lsp.util.make_position_params()
+      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/typeDefinition", params, jump.make_handler("LSP Type Definitions"))
     end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Type Definition" }))
 

@@ -6,7 +6,8 @@ M.safe_jump_to_location = function(location, offset_encoding)
   local range = location.range or location.targetSelectionRange
 
   -- Try enhanced C# source resolution for metadata URIs
-  if uri and uri:match("^csharp:/metadata/") then
+  if uri and (uri:match("^csharp:/metadata/") or uri:match("/%$metadata%$")) then
+    print("Detected metadata URI, calling enhanced jump...")
     local csharp_resolver = require("utils.csharp_source_resolver")
     local success = csharp_resolver.enhanced_jump_to_location(location, offset_encoding)
     if success then
@@ -28,6 +29,19 @@ M.safe_jump_to_location = function(location, offset_encoding)
     vim.api.nvim_set_current_buf(bufnr)
     local row = range.start.line
     local col = range.start.character
+    
+    -- Validate cursor position before setting
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+    if row >= line_count then
+      row = line_count - 1
+    end
+    
+    -- Get the line and validate column position
+    local line = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+    if col > #line then
+      col = #line
+    end
+    
     vim.api.nvim_win_set_cursor(0, { row + 1, col })
     vim.cmd("normal! zz")
   end)
@@ -51,9 +65,11 @@ M.make_handler = function(prompt_title)
     end
 
     local locations = vim.islist(result) and result or { result }
+    local client = vim.lsp.get_client_by_id(ctx.client_id)
+    local offset_encoding = client and client.offset_encoding or "utf-16"
 
     if #locations == 1 then
-      M.safe_jump_to_location(locations[1], vim.lsp.get_client_by_id(ctx.client_id).offset_encoding)
+      M.safe_jump_to_location(locations[1], offset_encoding)
     else
       local pickers = require("telescope.pickers")
       local finders = require("telescope.finders")
@@ -87,7 +103,7 @@ M.make_handler = function(prompt_title)
           actions.select_default:replace(function(prompt_bufnr)
             actions.close(prompt_bufnr)
             local selection = action_state.get_selected_entry()
-            M.safe_jump_to_location(selection.value, "utf-16")
+            M.safe_jump_to_location(selection.value, offset_encoding)
           end)
           return true
         end,

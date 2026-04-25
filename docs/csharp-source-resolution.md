@@ -1,274 +1,149 @@
-# C# NuGet Package Source Resolution
+# C# Source Resolution
 
-This document describes the C# NuGet package source resolution feature that allows you to jump directly to actual source code instead of empty metadata files.
-
-## Overview
-
-When working with C# projects that reference NuGet packages, the LSP often takes you to metadata URIs like:
-```
-csharp:/metadata/projects/RedBear.MoneyBot.Api/assemblies/RedBear.Common.Containers/symbols/RedBear.Common.Containers.ContainerLifecycle.cs
-```
-
-This feature automatically resolves these metadata references to actual source code when available, providing a much better development experience.
+This Neovim configuration provides intelligent "Go to Definition" functionality for C# development that automatically determines the best way to navigate to different types of code.
 
 ## How It Works
 
-### 1. Automatic Source Resolution
+When you use `<leader>gd` (Go to Definition) on a C# symbol, the system intelligently routes you based on the type:
 
-When you use `<leader>gd`, `<leader>gi`, `<leader>gR`, or `<leader>gt` and land on a C# metadata URI, the system:
+### 1. RedBear Types (Highest Priority)
+- **Detection**: Any assembly containing "RedBear" in the name
+- **Action**: Searches for source files in `d:\RedBear\HoneyComb\` directory
+- **Behavior**: Opens the actual source file for editing and debugging
+- **Fallback**: Shows warning if source not found in expected location
 
-1. **Parses the metadata URI** to extract:
-   - Assembly name (e.g., `Microsoft.Extensions.Hosting`)
-   - File name (e.g., `Host.cs`)
-   - Project context
+### 2. Microsoft Core Types (Second Priority)  
+- **Detection**: Assemblies starting with `System.*` or `Microsoft.*`
+- **Action**: Opens official Microsoft documentation in your default browser
+- **Examples**: `String`, `DateTime`, `List<T>`, `ILogger`, `HttpClient`
+- **URL Format**: `https://docs.microsoft.com/en-us/dotnet/api/system.string`
+- **Fallback**: Falls back to GitHub source if docs URL not available
 
-2. **Searches for actual source** in multiple locations:
-   - **Local RedBear repositories**: `d:/redbear/honeycomb/RedBear.Common.Containers/`
-   - **Custom source mappings**: User-defined local directories
-   - **GitHub repositories**: Downloads source from public repositories
-   - **Browser fallback**: Opens GitHub page if download fails
+### 3. Third-Party/Open Source (Third Priority)
+- **Detection**: Libraries with configured GitHub mappings
+- **Action**: Opens source code on GitHub in your default browser
+- **Examples**: Newtonsoft.Json, EntityFramework, etc.
+- **Fallback**: Shows metadata buffer if no GitHub mapping exists
 
-3. **Opens the real source file** if found, with intelligent line positioning
+### 4. Metadata Fallback
+- **When**: All other options fail or for unknown assemblies
+- **Action**: Opens the decompiled metadata view in a buffer
+- **Limitations**: Read-only, may have formatting issues
 
-4. **Falls back to metadata** if no source is available anywhere
+## Key Mappings
 
-### 2. GitHub Integration
+| Keymap | Action | Description |
+|--------|--------|-------------|
+| `<leader>gd` | Go to Definition | Smart routing as described above |
+| `<leader>gR` | Find References | Shows all references using Telescope |
+| `<leader>gi` | Go to Implementation | Navigate to implementations |
+| `<leader>gt` | Go to Type Definition | Navigate to type definitions |
 
-For public NuGet packages (Microsoft.*, Newtonsoft.Json, etc.), the system:
-- **Downloads source files** from GitHub automatically
-- **Caches downloaded files** locally for future use
-- **Opens GitHub in browser** as fallback if download fails
-- **Supports major .NET packages** out of the box
+## Priority Logic
 
-### 2. Smart File Detection
+The system follows this decision tree:
 
-The resolver uses multiple strategies to find source files:
-- **Direct path matching**: Looks for exact file paths
-- **Common directory structures**: Checks `src/`, `Source/`, root directory
-- **Recursive search**: Uses Windows `dir` command to find files recursively
-- **Class name matching**: If line numbers don't match, finds class declarations
-
-### 3. Cross-Platform Compatibility
-
-The system works on both Windows and Unix-like systems:
-- **Windows**: Uses `dir` and `findstr` commands
-- **Unix/Linux**: Uses `find` command
-- **Path normalization**: Converts between forward/backward slashes automatically
+1. **Is it a RedBear assembly?** → Open local source file
+2. **Is it a Microsoft core type?** → Open Microsoft documentation  
+3. **Is it mapped to GitHub?** → Open GitHub source page
+4. **Default** → Show metadata buffer
 
 ## Configuration
 
-### Base Directories
-
-Configure where your source code is located:
-
+### RedBear Base Directories
 ```lua
--- In utils/csharp_source_resolver.lua
-M.config = {
-  redbear_base_dirs = {
-    "d:/redbear/honeycomb/",
-    "d:/redbear/",
-    "c:/code/redbear/",
-    -- Add your custom paths here
-  },
+redbear_base_dirs = {
+  "d:/redbear/honeycomb/",
+  "d:/redbear/",
+  "c:/code/redbear/",
 }
 ```
 
-### Custom Source Mappings
+### Microsoft Documentation Mappings
+The system automatically maps core .NET assemblies to their documentation:
+- `System.Private.CoreLib` → system.*
+- `Microsoft.Extensions.*` → microsoft.extensions.*
+- `Microsoft.AspNetCore.*` → microsoft.aspnetcore.*
 
-For non-RedBear packages or custom locations:
-
+### GitHub Source Mappings
+For open-source libraries, the system can open source on GitHub:
 ```lua
-M.config.source_mappings = {
-  ["MyCompany.Common"] = "c:/code/mycompany/common",
-  ["ThirdParty.Library"] = "d:/source/thirdparty/library",
-}
-```
-
-### GitHub Repository Mappings
-
-For public NuGet packages, the system includes pre-configured GitHub mappings:
-
-```lua
-M.config.github_mappings = {
+github_mappings = {
   ["Microsoft.Extensions.Hosting"] = {
     repo = "dotnet/runtime",
     path_prefix = "src/libraries/Microsoft.Extensions.Hosting/src",
     branch = "main"
-  },
-  ["Microsoft.AspNetCore"] = {
-    repo = "dotnet/aspnetcore", 
-    path_prefix = "src",
-    branch = "main"
-  },
-  -- Many more pre-configured...
+  }
 }
 ```
 
-**Supported packages include**:
-- Microsoft.Extensions.* (Hosting, DependencyInjection, Configuration, Logging)
-- Microsoft.AspNetCore.*
-- System.Text.Json
-- Newtonsoft.Json
-- Entity Framework Core
-- AutoMapper, Serilog, NUnit, xUnit
-- And more...
+## Error Handling
 
-## Keymaps and Commands
-
-### C#-Specific Keymaps (in C# files)
-
-| Keymap | Action | Description |
-|--------|--------|-------------|
-| `<leader>csf` | Find Source | Search for source files in assembly using Telescope |
-| `<leader>csm` | Add Mapping | Add custom source directory mapping |
-| `<leader>csg` | Add GitHub | Add GitHub repository mapping |
-| `<leader>csd` | Download Source | Force download source file from GitHub |
-| `<leader>csc` | Clear Cache | Clear downloaded source cache |
-| `<leader>css` | Show Mappings | Display all configured source mappings |
-
-### Global Commands
-
-| Command | Description |
-|---------|-------------|
-| `:CSharpFindSource [assembly]` | Find source files in specified assembly |
-| `:CSharpAddMapping` | Add a custom source mapping interactively |
-| `:CSharpAddGitHub` | Add a GitHub repository mapping |
-| `:CSharpDownload` | Download a specific source file from GitHub |
-| `:CSharpClearCache` | Clear the downloaded source cache |
-| `:CSharpShowMappings` | Show all current mappings |
-
-### Enhanced LSP Navigation
-
-Your existing LSP keymaps now have enhanced functionality:
-
-| Keymap | Enhanced Behavior |
-|--------|-------------------|
-| `<leader>gd` | Go to definition → tries source first, falls back to metadata |
-| `<leader>gi` | Go to implementation → tries source first, falls back to metadata |
-| `<leader>gR` | Find references → shows source locations when available |
-| `<leader>gt` | Type definition → tries source first, falls back to metadata |
-
-## Usage Examples
-
-### 1. Basic Navigation (Microsoft Extensions)
-```csharp
-// In your C# code
-return Host.CreateDefaultBuilder(args) // Cursor on CreateDefaultBuilder
-```
-- Press `<leader>gd`
-- System detects it's Microsoft.Extensions.Hosting
-- Downloads Host.cs from dotnet/runtime GitHub repository
-- Opens the actual source code with CreateDefaultBuilder method
-
-### 2. RedBear Package Navigation
-```csharp
-// In your C# code
-var container = new ContainerLifecycle(); // Cursor here
-```
-- Press `<leader>gd`
-- Finds local RedBear source in `d:/redbear/honeycomb/RedBear.Common.Containers/`
-- Opens actual source file locally
-
-### 3. GitHub Fallback
-```csharp
-// In your C# code
-JsonConvert.SerializeObject(data); // Cursor on SerializeObject
-```
-- Press `<leader>gd`
-- If download fails, opens GitHub page in browser
-- You can view the source on GitHub directly
-
-### 2. Finding Source Files
-- Press `<leader>csf`
-- Enter assembly name (e.g., "Microsoft.Extensions.Hosting")
-- Telescope shows all .cs files in that assembly (local or cached)
-- Select file to open
-
-### 3. Adding Custom Mappings
-- Press `<leader>csm` for local directory mapping
-- Press `<leader>csg` for GitHub repository mapping
-- Future navigation will check these locations
-
-### 4. Force Download
-- Press `<leader>csd`
-- Enter assembly name and filename
-- Downloads directly from GitHub and opens
-
-### 5. Managing Cache
-- Press `<leader>csc` to clear downloaded files
-- Press `<leader>css` to see all mappings and cache status
-
-## Performance Features
-
-### 1. Path Caching
-- Resolved paths are cached for the session
-- Subsequent jumps to the same files are instant
-- Cache persists until Neovim restart
-
-### 2. Intelligent Search
-- Only searches when dealing with metadata URIs
-- Skips resolution for regular file URIs
-- Falls back gracefully when source unavailable
-
-### 3. Downloaded Source Cache
-- Downloaded files are stored in Neovim's cache directory
-- Files persist between sessions
-- Use `:CSharpClearCache` to clean up space
-- Cache location: `~/.cache/nvim/csharp_sources/` (Unix) or `%LOCALAPPDATA%\nvim-data\csharp_sources\` (Windows)
-
-## File Structure Support
-
-The resolver handles various project structures:
-C:\Users\GarryTaylor\AppData\Local\nvim\docs\csharp-source-resolution.md
-```
-RedBear.Common.Containers/
-├── ContainerLifecycle.cs          # Root level
-├── src/
-│   └── ContainerLifecycle.cs      # Source directory
-├── Source/
-│   └── ContainerLifecycle.cs      # Alternative source directory
-└── Subfolder/
-    └── ContainerLifecycle.cs      # Nested files
-```
+The system includes robust error handling:
+- **Position encoding**: Automatically detects and uses correct encoding (utf-8/utf-16)  
+- **Cursor bounds checking**: Prevents crashes from invalid cursor positions
+- **Buffer validation**: Ensures buffers are properly loaded before jumping
+- **Network timeouts**: Graceful fallbacks when downloads fail
 
 ## Troubleshooting
 
-### Source Not Found
-1. Check if the directory exists in base directories
-2. Verify the assembly name matches the directory name
-3. Add custom mapping if needed: `<leader>csm`
+### "Cursor position outside buffer" Error
+- **Cause**: LSP returned invalid position data
+- **Fix**: Updated to validate cursor position before jumping
+- **Prevention**: Automatic bounds checking now in place
 
-### Wrong File Opened
-1. Check if multiple files have the same name
-2. Use `<leader>csf` to browse all files in the assembly
-3. Verify the directory structure matches expectations
+### "position_encoding param is required" Error  
+- **Cause**: Newer Neovim versions require explicit encoding parameter
+- **Fix**: Updated to detect and pass correct encoding from LSP client
+- **Prevention**: Automatic client detection with utf-16 fallback
 
-### Performance Issues
-1. Check `<leader>css` for cached paths
-2. Ensure base directories exist (non-existent dirs are skipped)
-3. Consider adding specific mappings for frequently used assemblies
+### Empty Metadata Buffers
+- **Cause**: .NET metadata files may not load properly
+- **Fix**: Enhanced detection and better error messages
+- **Alternative**: Automatic fallback to documentation/GitHub
 
-### Windows Path Issues
-- The system automatically converts between forward/backward slashes
-- Use forward slashes in configuration for cross-platform compatibility
-- Windows `dir` command is used for recursive searches
+## Advanced Features
 
-## Integration with Existing Workflow
+### Manual Source Mapping
+```lua
+-- Add custom source mappings
+:lua require('utils.csharp_source_resolver').add_source_mapping()
+```
 
-This feature enhances your existing C# development workflow without changing your muscle memory:
+### Clear Cache  
+```lua
+-- Clear downloaded source cache
+:lua require('utils.csharp_source_resolver').clear_source_cache()
+```
 
-1. **Same keymaps** - `<leader>gd`, `<leader>gi`, etc. work as before
-2. **Better results** - Now jump to actual source instead of empty files
-3. **Graceful fallback** - Still works with packages that don't have source
-4. **Telescope integration** - Consistent with your existing fuzzy finding workflow
+### Debug Mode
+Enable verbose logging to see routing decisions:
+```lua
+vim.g.csharp_debug = true
+```
 
-The enhancement is completely transparent - when source is available, you get it; when it's not, you get the standard metadata behavior.
+## Examples
 
-## Future Enhancements
+### RedBear Code
+- Press `<leader>gd` on `RedBear.Common.Something`
+- → Opens `d:/redbear/honeycomb/src/Common/Something.cs`
 
-Potential improvements for this feature:
-- **Git integration**: Clone missing repositories automatically
-- **Symbol search**: Find symbols across all source repositories
-- **Dependency mapping**: Automatically map related assemblies
-- **Source indexing**: Pre-index source locations for faster resolution
-- **Remote sources**: Support for remote source repositories
+### Microsoft Core Type  
+- Press `<leader>gd` on `String` from `System`
+- → Opens `https://docs.microsoft.com/en-us/dotnet/api/system.string`
+
+### Microsoft Extension Type
+- Press `<leader>gd` on `ILogger` from `Microsoft.Extensions.Logging`
+- → Opens Microsoft documentation or GitHub source
+
+### Unknown Assembly
+- Press `<leader>gd` on third-party library
+- → Shows decompiled metadata (original behavior)
+
+## Benefits
+
+1. **Intelligent routing** - Different types of code open in the most appropriate way
+2. **Better learning** - Microsoft documentation provides better API understanding than source
+3. **Faster navigation** - Direct links to relevant resources
+4. **RedBear priority** - Local code always takes precedence for debugging
+5. **Graceful fallbacks** - Still works when ideal target isn't available

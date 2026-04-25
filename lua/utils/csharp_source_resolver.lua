@@ -88,25 +88,69 @@ M.config = {
 
 -- Parse C# metadata URI to extract package information
 M.parse_metadata_uri = function(uri)
-  -- Example URI: csharp:/metadata/projects/RedBear.MoneyBot.Api/assemblies/RedBear.Common.Containers/symbols/RedBear.Common.Containers.ContainerLifecycle.cs
+  -- Handle different URI formats:
+  -- Format 1: csharp:/metadata/projects/RedBear.MoneyBot.Api/assemblies/RedBear.Common.Containers/symbols/RedBear.Common.Containers.ContainerLifecycle.cs
+  -- Format 2: /$metadata$/Project/Service/Assembly/Microsoft/Extensions/Hosting/Symbol/Microsoft/Extensions/Hosting/HostBuilder.cs
   
-  if not uri:match("^csharp:/metadata/") then
+  local assembly_name, file_path, project_name
+  
+  if uri:match("^csharp:/metadata/") then
+    -- Old format parsing
+    local parts = {}
+    for part in uri:gmatch("[^/]+") do
+      table.insert(parts, part)
+    end
+    
+    if #parts >= 6 then
+      project_name = parts[4]  -- RedBear.MoneyBot.Api
+      assembly_name = parts[6] -- RedBear.Common.Containers
+      file_path = parts[8]     -- RedBear.Common.Containers.ContainerLifecycle.cs
+    end
+  elseif uri:match("/%$metadata%$") then
+    -- New format parsing: /$metadata$/Project/Service/Assembly/Microsoft/Extensions/Hosting/Symbol/Microsoft/Extensions/Hosting/HostBuilder.cs
+    local parts = {}
+    -- Split on both / and \ to handle Windows paths
+    for part in uri:gmatch("[^/\\]+") do
+      if part ~= "$metadata$" and part ~= "" then
+        table.insert(parts, part)
+      end
+    end
+    
+    -- Find where "Symbol" appears to locate the assembly and file parts
+    local symbol_index = nil
+    for i, part in ipairs(parts) do
+      if part == "Symbol" then
+        symbol_index = i
+        break
+      end
+    end
+    
+    if symbol_index and symbol_index >= 2 then
+      -- Assembly name is the parts before "Symbol" 
+      local assembly_parts = {}
+      for i = 4, symbol_index - 1 do  -- Skip "Project", "Service", "Assembly"
+        if parts[i] then
+          table.insert(assembly_parts, parts[i])
+        end
+      end
+      assembly_name = table.concat(assembly_parts, ".")
+      
+      -- File path is after "Symbol"
+      local file_parts = {}
+      for i = symbol_index + 1, #parts do
+        if parts[i] then
+          table.insert(file_parts, parts[i])
+        end
+      end
+      file_path = table.concat(file_parts, ".")
+      
+      project_name = parts[2] or "Unknown"
+    end
+  end
+  
+  if not assembly_name or not file_path then
     return nil
   end
-  
-  local parts = {}
-  for part in uri:gmatch("[^/]+") do
-    table.insert(parts, part)
-  end
-  
-  if #parts < 6 then
-    return nil
-  end
-  
-  -- Extract information from URI parts
-  local project_name = parts[4]  -- RedBear.MoneyBot.Api
-  local assembly_name = parts[6] -- RedBear.Common.Containers
-  local file_path = parts[8]     -- RedBear.Common.Containers.ContainerLifecycle.cs
   
   return {
     project = project_name,
@@ -337,16 +381,89 @@ M.open_github_page = function(metadata_info)
   return true
 end
 
+-- Open Microsoft documentation in browser for core .NET types
+M.open_microsoft_docs = function(metadata_info)
+  if not metadata_info then
+    return false
+  end
+  
+  local assembly = metadata_info.assembly
+  local file_path = metadata_info.file
+  
+  -- Extract type name from file path (e.g., "String.cs" -> "String")
+  local type_name = file_path:match("([^%.]+)%.cs$") or file_path
+  
+  -- Map of assemblies to their Microsoft docs base URLs
+  local docs_mappings = {
+    ["System.Private.CoreLib"] = "system",
+    ["System.Runtime"] = "system", 
+    ["System.Collections"] = "system.collections",
+    ["System.Collections.Generic"] = "system.collections.generic",
+    ["System.Linq"] = "system.linq",
+    ["System.IO"] = "system.io",
+    ["System.Net.Http"] = "system.net.http",
+    ["System.Text.Json"] = "system.text.json",
+    ["System.Threading.Tasks"] = "system.threading.tasks",
+    ["Microsoft.Extensions.DependencyInjection"] = "microsoft.extensions.dependencyinjection",
+    ["Microsoft.Extensions.Hosting"] = "microsoft.extensions.hosting",
+    ["Microsoft.Extensions.Configuration"] = "microsoft.extensions.configuration",
+    ["Microsoft.Extensions.Logging"] = "microsoft.extensions.logging",
+    ["Microsoft.AspNetCore"] = "microsoft.aspnetcore",
+  }
+  
+  local docs_namespace = docs_mappings[assembly]
+  if not docs_namespace then
+    -- Try to map by partial assembly name
+    for asm_prefix, namespace in pairs(docs_mappings) do
+      if assembly:match("^" .. asm_prefix:gsub("%.", "%%.")) then
+        docs_namespace = namespace
+        break
+      end
+    end
+  end
+  
+  if docs_namespace then
+    -- Construct Microsoft docs URL
+    local docs_url = string.format(
+      "https://docs.microsoft.com/en-us/dotnet/api/%s.%s",
+      docs_namespace,
+      type_name:lower()
+    )
+    
+    vim.notify("Opening Microsoft documentation: " .. docs_url, vim.log.levels.INFO)
+    
+    -- Open in default browser
+    local open_cmd
+    if vim.fn.has("win32") == 1 then
+      open_cmd = "start " .. docs_url
+    elseif vim.fn.has("mac") == 1 then
+      open_cmd = "open " .. docs_url  
+    else
+      open_cmd = "xdg-open " .. docs_url
+    end
+    
+    vim.fn.system(open_cmd)
+    return true
+  end
+  
+  return false
+end
+
 -- Enhanced jump function that tries to resolve source first
 M.enhanced_jump_to_location = function(location, offset_encoding)
   local uri = location.uri or location.targetUri
   local range = location.range or location.targetSelectionRange
+  
+  -- Debug logging
+  print("Enhanced jump called with URI: " .. (uri or "nil"))
   
   -- Try to resolve to actual source if it's a metadata URI
   local metadata_info = M.parse_metadata_uri(uri)
   local actual_source_path = nil
   
   if metadata_info then
+    print("Parsed metadata - Assembly: " .. (metadata_info.assembly or "nil"))
+    
     actual_source_path = M.find_source_file(metadata_info)
     
     if actual_source_path then
@@ -407,7 +524,25 @@ M.enhanced_jump_to_location = function(location, offset_encoding)
       
       return true
     else
-      -- If source not found locally, try GitHub browser fallback
+      -- If source not found locally, check if it's a RedBear type first
+      if metadata_info.assembly and metadata_info.assembly:match("RedBear") then
+        vim.notify(string.format("RedBear source not found for %s, check if it exists in d:/RedBear/HoneyComb/", metadata_info.assembly), vim.log.levels.WARN)
+        return false
+      end
+      
+      -- For Microsoft core types, try opening documentation first
+      if metadata_info.assembly and (metadata_info.assembly:match("^System") or metadata_info.assembly:match("^Microsoft")) then
+        print("Detected Microsoft type, opening documentation...")
+        local opened_docs = M.open_microsoft_docs(metadata_info)
+        if opened_docs then
+          vim.notify("Microsoft type detected, opened official documentation", vim.log.levels.INFO)
+          return true
+        else
+          print("Failed to open Microsoft documentation")
+        end
+      end
+      
+      -- If docs not available or failed, try GitHub browser fallback
       local opened_browser = M.open_github_page(metadata_info)
       if opened_browser then
         vim.notify("Source not found locally, opened GitHub page in browser", vim.log.levels.INFO)

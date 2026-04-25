@@ -89,6 +89,10 @@ return {
             { "gR", function() require("telescope.builtin").lsp_references() end, desc = "Telescope: Find References" },
             { "gi", function() require("telescope.builtin").lsp_implementations() end, desc = "Telescope: Go to Implementation" },
             { "gt", function() require("telescope.builtin").lsp_type_definitions() end, desc = "Telescope: Type Definition" },
+            { "<leader>H", vim.diagnostic.open_float, desc = "Diagnostics: Show line diagnostics" },
+            { "[d", vim.diagnostic.goto_prev, desc = "Diagnostics: Previous" },
+            { "]d", vim.diagnostic.goto_next, desc = "Diagnostics: Next" },
+            { "<leader>q", vim.diagnostic.setloclist, desc = "Diagnostics: Open location list" },
           },
         },
       },
@@ -113,10 +117,7 @@ return {
         comment_placeholder = "   ",
         lsp_cfg = true, -- Enable LSP config integration
         lsp_gofumpt = true,
-        lsp_on_attach = function(client, bufnr)
-          -- Custom on_attach function to avoid conflicts
-          require('go.lsp').on_attach(client, bufnr)
-        end,
+        lsp_on_attach = true, -- Use go.nvim's default on_attach
         dap_debug = true,
         dap_debug_gui = true,
         dap_debug_keymap = true,
