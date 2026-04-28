@@ -9,59 +9,59 @@ return {
     end,
   },
 
-  -- Mason installation for core tools
+  -- Mason: only csharpier formatter and netcoredbg debugger (roslyn.nvim self-installs)
   {
     "williamboman/mason.nvim",
     opts = {
-      ensure_installed = { "omnisharp", "netcoredbg", "csharpier" },
+      ensure_installed = { "netcoredbg", "csharpier" },
     },
   },
 
-  -- LSP configuration including omnisharp with extended handlers & Telescope mapping
+  -- roslyn.nvim: official Roslyn C# language server (replaces omnisharp)
+  -- Install the server: :MasonInstall roslyn (requires custom registry in mason.lua)
   {
-    "neovim/nvim-lspconfig",
-    dependencies = { "Hoffs/omnisharp-extended-lsp.nvim", "nvim-telescope/telescope.nvim" },
-    opts = {
-      servers = {
-        omnisharp = {
-          cmd = { "omnisharp", "--languageserver", "--hostPID", tostring(vim.fn.getpid()) },
-          handlers = {
-            -- Fixes definition issues
-            ["textDocument/definition"] = function(...) return require("omnisharp_extended").handler(...) end,
-            ["textDocument/typeDefinition"] = function(...) return require("omnisharp_extended").handler(...) end,
-            ["textDocument/implementation"] = function(...) return require("omnisharp_extended").handler() end,
-            ["textDocument/references"] = function(...) return require("omnisharp_extended").handler(...) end,
+    "seblyng/roslyn.nvim",
+    ft = "cs",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    init = function()
+      -- LSP settings via Neovim 0.11+ vim.lsp.config API.
+      -- Keymaps are in keymaps.lua FileType autocmd (more reliable than on_attach).
+      vim.lsp.config("roslyn", {
+        capabilities = require("cmp_nvim_lsp").default_capabilities(),
+        settings = {
+          ["csharp|inlay_hints"] = {
+            csharp_enable_inlay_hints_for_implicit_object_creation = true,
+            csharp_enable_inlay_hints_for_implicit_variable_types = true,
+            csharp_enable_inlay_hints_for_types = true,
+            dotnet_enable_inlay_hints_for_parameters = true,
+            dotnet_suppress_inlay_hints_for_parameters_that_match_argument_name = true,
+            dotnet_suppress_inlay_hints_for_parameters_that_match_method_intent = true,
           },
-          enable_roslyn_analyzers = true,
-          organize_imports_on_format = true,
-          enable_import_completion = true,
-          sdk_include_prereleases = true,
-          enable_import_completion = true,
-          enable_debugging = true,
-          enable_decompilation_support = true, 
-          capabilities = require("cmp_nvim_lsp").default_capabilities(),
-          -- Telescope keymaps for .cs files
-          keys = {
-            { "gd", function() require("telescope.builtin").lsp_definitions() end, desc = "Telescope: Go to Definition" },
-            { "gR", function() require("telescope.builtin").lsp_references() end, desc = "Telescope: Find References" },
-            { "gi", function() require("telescope.builtin").lsp_implementations() end, desc = "Telescope: Go to Implementation" },
-            { "gt", function() require("telescope.builtin").lsp_type_definitions() end, desc = "Telescope: Type Definition" },
+          ["csharp|completion"] = {
+            dotnet_show_completion_items_from_unimported_namespaces = true,
+            dotnet_provide_regex_completions = true,
+          },
+          ["csharp|code_lens"] = {
+            dotnet_enable_references_code_lens = true,
+          },
+          ["csharp|background_analysis"] = {
+            dotnet_analyzer_diagnostics_scope = "fullSolution",
+            dotnet_compiler_diagnostics_scope = "fullSolution",
           },
         },
+      })
+    end,
+    opts = {
+      broad_search = true,   -- search parent dirs for .sln files
+      filewatching = "auto",
+      extensions = {
+        -- Disable razor: suppresses "no path provided" warnings for non-web projects
+        razor = { enabled = false },
       },
     },
   },
 
-  -- Optional: formatting and debug setup
-  {
-    "nvimtools/none-ls.nvim",
-    optional = true,
-    opts = function(_, opts)
-      local nls = require("null-ls")
-      opts.sources = opts.sources or {}
-      table.insert(opts.sources, nls.builtins.formatting.csharpier)
-    end,
-  },
+  -- CSharpier formatter via conform
   {
     "stevearc/conform.nvim",
     optional = true,
@@ -72,26 +72,46 @@ return {
       },
     },
   },
+
+  -- DAP: netcoredbg for C# debugging
+  -- Uses init (not config) so it doesn't overwrite nvim-dap.lua's main config
   {
     "mfussenegger/nvim-dap",
     optional = true,
     dependencies = { "jay-babu/mason-nvim-dap.nvim" },
-    config = function()
-      require("mason-nvim-dap").setup({ ensure_installed = { "netcoredbg" } })
-      local dap = require("dap")
-      dap.adapters.coreclr = {
-        type = "executable",
-        command = vim.fn.exepath("netcoredbg"),
-        args = { "--interpreter=vscode" },
-      }
-      dap.configurations.cs = {
-        {
-          type = "coreclr", name = "Launch .NET", request = "launch",
-          program = function()
-            return vim.fn.input("A1) Path to dll: ", vim.fn.getcwd() .. "/bin/Debug/net7.0/", "file")
-          end,
-        },
-      }
+    init = function()
+      -- Defer until after nvim-dap's own config has run
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "cs",
+        once = true,
+        callback = function()
+          local dap = require("dap")
+          if dap.adapters.coreclr then return end  -- already configured
+          dap.adapters.coreclr = {
+            type = "executable",
+            command = vim.fn.exepath("netcoredbg") ~= "" and vim.fn.exepath("netcoredbg")
+              or vim.fn.stdpath("data") .. "/mason/bin/netcoredbg",
+            args = { "--interpreter=vscode" },
+          }
+          dap.configurations.cs = {
+            {
+              type = "coreclr",
+              name = "Launch .NET",
+              request = "launch",
+              program = function()
+                local cwd = vim.fn.getcwd()
+                local dlls = vim.fn.glob(cwd .. "/bin/Debug/**/*.dll", false, true)
+                for _, dll in ipairs(dlls) do
+                  if not dll:match("%.Tests?%.dll$") and not dll:match("xunit") and not dll:match("testhost") then
+                    return dll
+                  end
+                end
+                return vim.fn.input("Path to dll: ", cwd .. "/bin/Debug/", "file")
+              end,
+            },
+          }
+        end,
+      })
     end,
   },
 }

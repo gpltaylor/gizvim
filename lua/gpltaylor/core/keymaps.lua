@@ -41,35 +41,43 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     local opts = { noremap = true, silent = true, buffer = 0 }
 
-    -- Telescope-powered reference search
-
-
+    -- LSP navigation via custom jump handler
     local jump = require("utils.lsp_jump_patch")
 
     vim.keymap.set("n", "<leader>gR", function()
-      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local client = vim.lsp.get_clients({ bufnr = 0 })[1]
       local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
-
       vim.lsp.buf_request(0, "textDocument/references", params, jump.make_handler("LSP References"))
-    end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Find References" }))
+    end, vim.tbl_extend("force", opts, { desc = "LSP: Find References" }))
 
     vim.keymap.set("n", "<leader>gd", function()
-      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local client = vim.lsp.get_clients({ bufnr = 0 })[1]
       local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/definition", params, jump.make_handler("LSP Definitions"))
-    end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Definition" }))
+    end, vim.tbl_extend("force", opts, { desc = "LSP: Go to Definition" }))
 
     vim.keymap.set("n", "<leader>gi", function()
-      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local client = vim.lsp.get_clients({ bufnr = 0 })[1]
       local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/implementation", params, jump.make_handler("LSP Implementations"))
-    end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Implementation" }))
+    end, vim.tbl_extend("force", opts, { desc = "LSP: Go to Implementation" }))
 
     vim.keymap.set("n", "<leader>gt", function()
-      local client = vim.lsp.get_active_clients({ bufnr = 0 })[1]
+      local client = vim.lsp.get_clients({ bufnr = 0 })[1]
       local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
       vim.lsp.buf_request(0, "textDocument/typeDefinition", params, jump.make_handler("LSP Type Definitions"))
-    end, vim.tbl_extend("force", opts, { desc = "Safe LSP: Go to Type Definition" }))
+    end, vim.tbl_extend("force", opts, { desc = "LSP: Go to Type Definition" }))
+
+    -- Standard LSP actions (always available in .cs files)
+    vim.keymap.set("n", "K",           vim.lsp.buf.hover,                                                   vim.tbl_extend("force", opts, { desc = "LSP: Hover Docs" }))
+    vim.keymap.set("n", "<leader>rn",  vim.lsp.buf.rename,                                                  vim.tbl_extend("force", opts, { desc = "LSP: Rename Symbol" }))
+    vim.keymap.set("n", "<leader>ca",  vim.lsp.buf.code_action,                                             vim.tbl_extend("force", opts, { desc = "LSP: Code Action / Analyzer Fix" }))
+    vim.keymap.set("n", "<leader>ds",  function() require("telescope.builtin").lsp_document_symbols() end,  vim.tbl_extend("force", opts, { desc = "LSP: Document Symbols" }))
+    vim.keymap.set("n", "<leader>ws",  function() require("telescope.builtin").lsp_dynamic_workspace_symbols() end, vim.tbl_extend("force", opts, { desc = "LSP: Workspace Symbols" }))
+    vim.keymap.set("n", "<leader>H",   vim.diagnostic.open_float,                                           vim.tbl_extend("force", opts, { desc = "Diagnostics: Show Float" }))
+    vim.keymap.set("n", "]d",          vim.diagnostic.goto_next,                                            vim.tbl_extend("force", opts, { desc = "Diagnostics: Next" }))
+    vim.keymap.set("n", "[d",          vim.diagnostic.goto_prev,                                            vim.tbl_extend("force", opts, { desc = "Diagnostics: Previous" }))
+    vim.keymap.set("n", "<leader>cl",  function() vim.lsp.codelens.refresh({ bufnr = 0 }) end,  vim.tbl_extend("force", opts, { desc = "LSP: Refresh Code Lens" }))
 
     -- Debugging keymaps
     vim.keymap.set("n", "<F2>", ":lua require'dap'.toggle_breakpoint()<CR>", opts) -- Toggle Breakpoint

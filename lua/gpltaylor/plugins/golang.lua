@@ -52,7 +52,6 @@ return {
               completeUnimported = true,
               matcher = "Fuzzy",
               diagnosticsDelay = "500ms",
-              experimentalWatchedFileDelay = "100ms",
               symbolMatcher = "fuzzy",
               ["local"] = "",
               buildFlags = { "-tags", "integration" },
@@ -83,17 +82,6 @@ return {
             },
           },
           capabilities = require("cmp_nvim_lsp").default_capabilities(),
-          -- Telescope keymaps for Go files
-          keys = {
-            { "gd", function() require("telescope.builtin").lsp_definitions() end, desc = "Telescope: Go to Definition" },
-            { "gR", function() require("telescope.builtin").lsp_references() end, desc = "Telescope: Find References" },
-            { "gi", function() require("telescope.builtin").lsp_implementations() end, desc = "Telescope: Go to Implementation" },
-            { "gt", function() require("telescope.builtin").lsp_type_definitions() end, desc = "Telescope: Type Definition" },
-            { "<leader>H", vim.diagnostic.open_float, desc = "Diagnostics: Show line diagnostics" },
-            { "[d", vim.diagnostic.goto_prev, desc = "Diagnostics: Previous" },
-            { "]d", vim.diagnostic.goto_next, desc = "Diagnostics: Next" },
-            { "<leader>q", vim.diagnostic.setloclist, desc = "Diagnostics: Open location list" },
-          },
         },
       },
     },
@@ -115,9 +103,9 @@ return {
         tag_transform = false,
         test_dir = "",
         comment_placeholder = "   ",
-        lsp_cfg = true, -- Enable LSP config integration
-        lsp_gofumpt = true,
-        lsp_on_attach = true, -- Use go.nvim's default on_attach
+        lsp_cfg = false, -- lspconfig.lua handles gopls via setup_handlers
+        lsp_gofumpt = false, -- handled in gopls settings
+        lsp_on_attach = false, -- lspconfig.lua on_attach handles it
         dap_debug = true,
         dap_debug_gui = true,
         dap_debug_keymap = true,
@@ -254,16 +242,4 @@ return {
     },
   },
 
-  -- Linting configuration
-  {
-    "nvimtools/none-ls.nvim",
-    optional = true,
-    opts = function(_, opts)
-      local nls = require("null-ls")
-      opts.sources = opts.sources or {}
-      table.insert(opts.sources, nls.builtins.formatting.goimports)
-      table.insert(opts.sources, nls.builtins.formatting.gofumpt)
-      table.insert(opts.sources, nls.builtins.diagnostics.golangci_lint)
-    end,
-  },
 }

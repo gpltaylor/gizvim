@@ -1,33 +1,44 @@
 return {
-    {
-        "nvim-treesitter/nvim-treesitter",
-        build = false, -- Disable automatic building to avoid compiler issues
-        lazy = false,
-        config = function()
-            -- The bundled Lua treesitter parser in this Neovim version does not support
-            -- the "operator" field referenced in the runtime highlight queries, causing
-            -- E5113 errors whenever a Lua buffer's ftplugin fires.
-            --
-            -- Fix: after the FileType autocmd chain runs (including ftplugin/lua.lua which
-            -- calls vim.treesitter.start), use vim.schedule to stop treesitter on that
-            -- buffer. vim.cmd('syntax on') keeps regex-based highlighting working.
-            vim.api.nvim_create_autocmd('FileType', {
-                pattern = 'lua',
-                callback = function(ev)
-                    vim.schedule(function()
-                        pcall(vim.treesitter.stop, ev.buf)
-                        vim.bo[ev.buf].syntax = 'on'
-                    end)
-                end,
-            })
-
-            -- Enable basic syntax highlighting for common file types
-            vim.api.nvim_create_autocmd('BufRead', {
-                pattern = { '*.lua', '*.vim', '*.md', '*.js', '*.ts', '*.go', '*.rs', '*.c' },
-                callback = function()
-                    vim.cmd('syntax on')
-                end,
-            })
-        end,
-    },
+  {
+    "nvim-treesitter/nvim-treesitter",
+    build = ":TSUpdate",
+    lazy = false,
+    config = function()
+      -- Guard: plugin may not be installed on first launch (run :Lazy sync)
+      local ok, configs = pcall(require, "nvim-treesitter.configs")
+      if not ok then
+        vim.notify("nvim-treesitter not installed yet — run :Lazy sync", vim.log.levels.WARN)
+        return
+      end
+      configs.setup({
+        ensure_installed = {
+          "go", "gomod", "gowork", "gotmpl",  -- Go
+          "c_sharp",                          -- C#
+          "lua", "vim", "vimdoc",             -- Neovim config
+          "markdown", "markdown_inline",      -- Docs
+          "json", "yaml", "toml",             -- Config files
+          "bash",                             -- Scripts
+        },
+        auto_install = true,
+        highlight = {
+          enable = true,
+          disable = function(lang, buf)
+            local max_filesize = 500 * 1024
+            local ok2, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
+            if ok2 and stats and stats.size > max_filesize then return true end
+          end,
+        },
+        indent = { enable = true },
+        incremental_selection = {
+          enable = true,
+          keymaps = {
+            init_selection = "<C-space>",
+            node_incremental = "<C-space>",
+            scope_incremental = false,
+            node_decremental = "<bs>",
+          },
+        },
+      })
+    end,
+  },
 }

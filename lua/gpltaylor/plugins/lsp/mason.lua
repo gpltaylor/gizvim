@@ -15,6 +15,11 @@ return {
 
     -- enable mason and configure icons
     mason.setup({
+      -- Custom registry needed for the roslyn C# language server package
+      registries = {
+        "github:mason-org/mason-registry",
+        "github:Crashdummyy/mason-registry",
+      },
       ui = {
         icons = {
           package_installed = "✓",
@@ -38,23 +43,24 @@ return {
         "prismals",
         "pyright",
         "gopls",
-        "omnisharp",
       },
     })
 
     mason_tool_installer.setup({
       ensure_installed = {
-        "prettier", -- prettier formatter
-        "stylua",   -- lua formatter
+        "prettier",      -- prettier formatter
+        "stylua",        -- lua formatter
         "eslint_d",
-        "delve",    -- Go debugger
-        "gopls",    -- Go language server
-        "gofumpt",  -- Go formatter
-        "goimports", -- Go imports organizer
+        "delve",         -- Go debugger
+        "gofumpt",       -- Go formatter
+        "goimports",     -- Go imports organizer
         "golangci-lint", -- Go linter
-        "gomodifytags", -- Go struct tag modifier
-        "gotests",      -- Go test generator
-        "impl",         -- Go interface implementation generator
+        "gomodifytags",  -- Go struct tag modifier
+        "gotests",       -- Go test generator
+        "impl",          -- Go interface implementation generator
+        "netcoredbg",    -- .NET debugger
+        "csharpier",     -- C# formatter
+        "roslyn",        -- C# language server (requires Crashdummyy/mason-registry above)
       },
     })
   end,

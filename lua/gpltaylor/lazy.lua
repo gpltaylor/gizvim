@@ -1,6 +1,5 @@
-local lazypath = vim.fn.stdpath("data") .. "lazy/lazy.nvim"
--- Disable CC for now - will install parsers manually if needed
--- vim.env.CC = 'zig cc'
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+vim.env.CC = 'zig cc'
 
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
