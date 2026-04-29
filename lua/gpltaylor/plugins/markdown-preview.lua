@@ -3,9 +3,8 @@ return {
   cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
   ft = { "markdown" },
   build = function()
-    -- Ensure we're in the right directory and install dependencies
-    local install_path = vim.fn.stdpath("data") .. "/lazy/markdown-preview.nvim"
-    vim.fn.system("cd " .. install_path .. "/app && npm install")
+    local install_path = vim.fn.stdpath("data") .. "/lazy/markdown-preview.nvim/app"
+    vim.fn.system("npm install --prefix " .. install_path)
   end,
   init = function()
     vim.g.mkdp_filetypes = { "markdown" }
