@@ -100,28 +100,16 @@ function M.build_and_debug()
     return
   end
 
-  -- sourceFileMap: tell netcoredbg to remap PDB backslash paths to the
-  -- forward-slash paths Neovim uses, so breakpoints can be matched.
-  -- getcwd() returns backslashes on Windows; normalise the value to fwd slashes
-  -- to match Neovim's buffer paths (which always use forward slashes).
-  local cwd_fwd = vim.fn.getcwd():gsub("\\", "/")  -- "D:/redbear/..."
-  local cwd_bwd = cwd_fwd:gsub("/", "\\")          -- "D:\redbear\..."
-  local source_file_map = { [cwd_bwd] = cwd_fwd }
-
   vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
 
-  -- cwd = the directory containing the DLL so appsettings.json is found.
-  local dll_dir = vim.fn.fnamemodify(main_dll, ":h")
-
   local quick_config = {
-    type             = "coreclr",
-    name             = "Quick Launch (Build & Debug)",
-    request          = "launch",
-    program          = main_dll,
-    cwd              = dll_dir,
-    env              = { ASPNETCORE_ENVIRONMENT = "Development" },
-    justMyCode       = false,
-    sourceFileMap    = source_file_map,
+    type          = "coreclr",
+    name          = "Quick Launch (Build & Debug)",
+    request       = "launch",
+    program       = main_dll,
+    cwd           = vim.fn.getcwd(),
+    env           = { ASPNETCORE_ENVIRONMENT = "Development" },
+    justMyCode    = false,
   }
   dap.run(quick_config)
 end

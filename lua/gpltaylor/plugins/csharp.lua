@@ -75,48 +75,25 @@ return {
       -- because lazy.nvim only runs one config per plugin.
       local dap = require("dap")
 
-      -- Resolve the real netcoredbg executable; never the .cmd shim.
-      -- The Mason .cmd wrapper is a batch script and cannot be used as a
-      -- DAP adapter command (jobstart() on Windows won't exec it).
-      -- Prefer the system PATH install (was working before Mason was set up).
-      local function find_netcoredbg()
-        local found = vim.fn.exepath("netcoredbg")
-        -- exepath() may return the Mason .cmd shim (e.g. netcoredbg.CMD on Windows).
-        -- .cmd batch files cannot be used as DAP adapter executables via jobstart().
-        -- Use lower() so the check works regardless of .cmd / .CMD / .Cmd casing.
-        if found ~= "" and not found:lower():match("%.cmd$") then
-          return found
+      -- Use c:\bin\netcoredbg.exe directly (user preferred, 3.1.2).
+      -- Mason installs only a .CMD batch shim that jobstart() cannot execute.
+      -- Fallback to Mason's real .exe if c:\bin is absent.
+      local netcoredbg_cmd
+      if vim.fn.has("win32") == 1 then
+        if vim.fn.filereadable("c:\\bin\\netcoredbg.exe") == 1 then
+          netcoredbg_cmd = "c:\\bin\\netcoredbg.exe"
+        else
+          netcoredbg_cmd = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
         end
-        -- Fall back to the real .exe inside the Mason package directory.
-        local mason_exe = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
-        if vim.fn.filereadable(mason_exe) == 1 then
-          return mason_exe
-        end
-        -- Last resort: bare name (may work if c:\bin is on PATH without the shim).
-        return "netcoredbg"
+      else
+        netcoredbg_cmd = "netcoredbg"
       end
 
       dap.adapters.coreclr = {
         type    = "executable",
-        command = find_netcoredbg(),
+        command = netcoredbg_cmd,
         args    = { "--interpreter=vscode" },
-        -- options.detached intentionally omitted: nvim-dap passes adapter.options
-        -- to jobstart() which uses the key 'detach' (not 'detached'), so setting
-        -- detached here is a no-op. Windows jobstart already defaults to detach=false.
       }
-
-      -- sourceFileMap: PDB embeds source paths with Windows backslashes.
-      -- Map the workspace backslash path → forward-slash so netcoredbg can
-      -- match the setBreakpoints source path from Neovim against PDB entries.
-      --
-      -- NOTE: vim.fn.getcwd() returns backslashes on Windows. We must normalise
-      -- to forward slashes first so the VALUE matches Neovim's buffer paths
-      -- (which always use forward slashes for breakpoint source).
-      local function make_source_file_map()
-        local cwd_fwd = vim.fn.getcwd():gsub("\\", "/")  -- "D:/redbear/..."
-        local cwd_bwd = cwd_fwd:gsub("/", "\\")          -- "D:\redbear\..."
-        return { [cwd_bwd] = cwd_fwd }
-      end
 
       local configs = {
         {
@@ -129,26 +106,14 @@ return {
               local dll = vimspector.find_main_dll()
               if dll and dll ~= "" then
                 vim.notify("netcoredbg launching: " .. vim.fn.fnamemodify(dll, ":t"), vim.log.levels.INFO)
-                return dll  -- forward-slash path; matches Neovim breakpoint source paths
+                return dll
               end
             end
             return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
-          -- cwd = DLL directory so appsettings.json (copied there by build) is found
-          cwd = function()
-            local ok, vimspector = pcall(require, "utils.vimspector_config")
-            if ok then
-              local dll = vimspector.find_main_dll()
-              if dll and dll ~= "" then
-                return vim.fn.fnamemodify(dll, ":h")
-              end
-            end
-            return vim.fn.getcwd()
-          end,
+          cwd              = vim.fn.getcwd,
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
-          stopAtEntry      = false,
-          sourceFileMap    = make_source_file_map,
         },
         {
           type    = "coreclr",
@@ -160,8 +125,6 @@ return {
           cwd              = vim.fn.getcwd,
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
-          stopAtEntry      = false,
-          sourceFileMap    = make_source_file_map,
         },
         {
           -- Useful for attaching to a running process (e.g. VSTEST_HOST_DEBUG scenarios)
