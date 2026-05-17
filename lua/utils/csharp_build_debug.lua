@@ -100,18 +100,13 @@ function M.build_and_debug()
     return
   end
 
-  -- Normalize to backslashes on Windows. find_main_dll() returns forward-slash
-  -- paths; netcoredbg's PDB source-path matching can fail if the program path
-  -- uses a different separator than the breakpoint source paths.
-  if vim.fn.has("win32") == 1 then
-    main_dll = main_dll:gsub("/", "\\")
-  end
+  -- Do NOT convert to backslashes. Neovim's breakpoint source paths always
+  -- use forward slashes; if program/cwd use backslashes the path matching in
+  -- netcoredbg's PDB lookup breaks. Keep forward slashes throughout.
 
   vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
 
-  -- cwd = the directory containing the DLL.
-  -- dotnet build copies appsettings.json etc. into bin/Debug/net*/,
-  -- so the DLL directory is the correct working directory for the launched app.
+  -- cwd = the directory containing the DLL so appsettings.json is found.
   local dll_dir = vim.fn.fnamemodify(main_dll, ":h")
 
   local quick_config = {
@@ -122,7 +117,6 @@ function M.build_and_debug()
     cwd              = dll_dir,
     env              = { ASPNETCORE_ENVIRONMENT = "Development" },
     justMyCode       = false,
-    requireExactSource = false,
   }
   dap.run(quick_config)
 end

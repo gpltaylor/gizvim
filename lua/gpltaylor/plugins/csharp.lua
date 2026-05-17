@@ -105,16 +105,11 @@ return {
         -- detached here is a no-op. Windows jobstart already defaults to detach=false.
       }
 
-      -- Helper: normalize a path to backslashes for netcoredbg on Windows.
-      -- The find_main_dll() helper returns forward-slash paths; netcoredbg's
-      -- PDB source-path matching can fail if the program path uses a different
-      -- separator than the source breakpoint paths.
-      local function win_path(p)
-        if vim.fn.has("win32") == 1 then
-          return p:gsub("/", "\\")
-        end
-        return p
-      end
+      -- NOTE: Do NOT convert paths to backslashes.
+      -- Neovim's buffer paths (used for breakpoint source) always use forward
+      -- slashes. If the DLL/cwd paths use backslashes while breakpoint sources
+      -- use forward slashes, netcoredbg's PDB source-path matching breaks.
+      -- Keeping everything as forward slashes is consistent and works on Windows.
 
       local configs = {
         {
@@ -127,10 +122,10 @@ return {
               local dll = vimspector.find_main_dll()
               if dll and dll ~= "" then
                 vim.notify("netcoredbg launching: " .. vim.fn.fnamemodify(dll, ":t"), vim.log.levels.INFO)
-                return win_path(dll)
+                return dll  -- forward-slash path; matches Neovim breakpoint source paths
               end
             end
-            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "\\bin\\Debug\\", "file")
+            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
           -- cwd = DLL directory so appsettings.json (copied there by build) is found
           cwd = function()
@@ -138,7 +133,7 @@ return {
             if ok then
               local dll = vimspector.find_main_dll()
               if dll and dll ~= "" then
-                return win_path(vim.fn.fnamemodify(dll, ":h"))
+                return vim.fn.fnamemodify(dll, ":h")
               end
             end
             return vim.fn.getcwd()
@@ -146,20 +141,18 @@ return {
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
           stopAtEntry      = false,
-          requireExactSource = false, -- tolerate minor path normalisation differences
         },
         {
           type    = "coreclr",
           name    = "Launch: select DLL",
           request = "launch",
           program = function()
-            return win_path(vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "\\bin\\Debug\\", "file"))
+            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
           cwd              = vim.fn.getcwd,
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
           stopAtEntry      = false,
-          requireExactSource = false,
         },
         {
           -- Useful for attaching to a running process (e.g. VSTEST_HOST_DEBUG scenarios)
