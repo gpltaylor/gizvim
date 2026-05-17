@@ -102,14 +102,17 @@ function M.build_and_debug()
 
   vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
 
+  local cwd = vim.fn.getcwd()
   local quick_config = {
-    type          = "coreclr",
-    name          = "Quick Launch (Build & Debug)",
-    request       = "launch",
-    program       = main_dll,
-    cwd           = vim.fn.getcwd(),
-    env           = { ASPNETCORE_ENVIRONMENT = "Development" },
-    justMyCode    = false,
+    type               = "coreclr",
+    name               = "Quick Launch (Build & Debug)",
+    request            = "launch",
+    program            = main_dll,
+    cwd                = cwd,
+    env                = { ASPNETCORE_ENVIRONMENT = "Development" },
+    justMyCode         = false,
+    requireExactSource = false,
+    sourceFileMap      = { [cwd:gsub("/", "\\")] = cwd:gsub("\\", "/") },
   }
   dap.run(quick_config)
 end

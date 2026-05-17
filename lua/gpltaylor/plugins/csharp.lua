@@ -93,6 +93,22 @@ return {
         type    = "executable",
         command = netcoredbg_cmd,
         args    = { "--interpreter=vscode" },
+        -- On Windows, Neovim buffer paths use forward slashes but PDB files embed backslashes.
+        -- enrich_config runs at launch time (after function values in the config are resolved)
+        -- so we can safely read cwd and build the correct sourceFileMap.
+        enrich_config = function(config, on_config)
+          if vim.fn.has("win32") == 1 then
+            local raw_cwd = type(config.cwd) == "function" and config.cwd()
+              or (config.cwd or vim.fn.getcwd())
+            local bwd = raw_cwd:gsub("/", "\\")  -- backslash  (PDB key)
+            local fwd = raw_cwd:gsub("\\", "/")  -- forward    (Neovim value)
+            config = vim.tbl_extend("keep", config, {
+              requireExactSource = false,
+              sourceFileMap      = { [bwd] = fwd },
+            })
+          end
+          on_config(config)
+        end,
       }
 
       local configs = {

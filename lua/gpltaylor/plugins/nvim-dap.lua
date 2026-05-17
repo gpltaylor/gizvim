@@ -33,12 +33,18 @@ return {
       dap.set_log_level("DEBUG")
 
       vim.api.nvim_create_user_command("DapLog", function()
-        local log = vim.fn.stdpath("cache") .. "/dap.log"
+        -- nvim-dap on Windows writes the log to $TEMP\nvim\dap.log, not stdpath("cache")
+        local log
+        if vim.fn.has("win32") == 1 then
+          log = vim.fn.expand("$TEMP") .. "\\nvim\\dap.log"
+        else
+          log = vim.fn.stdpath("cache") .. "/dap.log"
+        end
         if vim.fn.filereadable(log) == 0 then
           vim.notify("DAP log not found: " .. log, vim.log.levels.WARN)
           return
         end
-        vim.cmd("botright split " .. log)
+        vim.cmd("botright split " .. vim.fn.fnameescape(log))
         vim.cmd("normal! G")  -- jump to end (most recent entries)
       end, { desc = "Open DAP debug log (tail)" })
 
