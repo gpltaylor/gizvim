@@ -105,19 +105,17 @@ return {
         -- detached here is a no-op. Windows jobstart already defaults to detach=false.
       }
 
-      -- NOTE: Do NOT convert paths to backslashes.
-      -- Neovim's buffer paths (used for breakpoint source) always use forward
-      -- slashes. If the DLL/cwd paths use backslashes while breakpoint sources
-      -- use forward slashes, netcoredbg's PDB source-path matching breaks.
-      -- Keeping everything as forward slashes is consistent and works on Windows.
-      --
       -- sourceFileMap: PDB embeds source paths with Windows backslashes.
       -- Map the workspace backslash path → forward-slash so netcoredbg can
       -- match the setBreakpoints source path from Neovim against PDB entries.
+      --
+      -- NOTE: vim.fn.getcwd() returns backslashes on Windows. We must normalise
+      -- to forward slashes first so the VALUE matches Neovim's buffer paths
+      -- (which always use forward slashes for breakpoint source).
       local function make_source_file_map()
-        local cwd = vim.fn.getcwd()           -- "D:/redbear/honeycomb/..."
-        local pdb_path = cwd:gsub("/", "\\")  -- "D:\redbear\honeycomb\..."
-        return { [pdb_path] = cwd }
+        local cwd_fwd = vim.fn.getcwd():gsub("\\", "/")  -- "D:/redbear/..."
+        local cwd_bwd = cwd_fwd:gsub("/", "\\")          -- "D:\redbear\..."
+        return { [cwd_bwd] = cwd_fwd }
       end
 
       local configs = {

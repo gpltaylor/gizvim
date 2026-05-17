@@ -100,14 +100,13 @@ function M.build_and_debug()
     return
   end
 
-  -- Do NOT convert to backslashes. Neovim's breakpoint source paths always
-  -- use forward slashes; if program/cwd use backslashes the path matching in
-  -- netcoredbg's PDB lookup breaks. Keep forward slashes throughout.
-  --
   -- sourceFileMap: tell netcoredbg to remap PDB backslash paths to the
   -- forward-slash paths Neovim uses, so breakpoints can be matched.
-  local cwd = vim.fn.getcwd()
-  local source_file_map = { [cwd:gsub("/", "\\")] = cwd }
+  -- getcwd() returns backslashes on Windows; normalise the value to fwd slashes
+  -- to match Neovim's buffer paths (which always use forward slashes).
+  local cwd_fwd = vim.fn.getcwd():gsub("\\", "/")  -- "D:/redbear/..."
+  local cwd_bwd = cwd_fwd:gsub("/", "\\")          -- "D:\redbear\..."
+  local source_file_map = { [cwd_bwd] = cwd_fwd }
 
   vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
 
