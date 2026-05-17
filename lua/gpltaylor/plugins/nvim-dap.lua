@@ -1,21 +1,22 @@
+-- ============================================================
+-- nvim-dap: base DAP setup + UI
+-- Language-specific adapter configs live in their plugin files:
+--   csharp.lua  → coreclr / netcoredbg
+--   golang.lua  → delve
+-- ============================================================
 return {
-  -- Debug Adapter Protocol plugin
   {
     "mfussenegger/nvim-dap",
     dependencies = {
-      "rcarriga/nvim-dap-ui",            -- UI for nvim-dap
-      "theHamsta/nvim-dap-virtual-text", -- Virtual text for inline debug info
+      "rcarriga/nvim-dap-ui",
+      "theHamsta/nvim-dap-virtual-text",
     },
     config = function()
-      -- Load the configurations below
-      require("dap-config")
       local dapui = require("dapui")
       local dap = require("dap")
 
       dapui.setup()
 
-      -- Open DAP UI automatically
-      local dap = require("dap")
       dap.listeners.after.event_initialized["dapui_config"] = function()
         dapui.open()
       end
@@ -25,19 +26,19 @@ return {
       dap.listeners.before.event_exited["dapui_config"] = function()
         dapui.close()
       end
-
     end,
   },
 
-  -- Optional: Auto-detect and configure DAP adapters for languages
+  -- mason-nvim-dap: kept for ensure_installed (tool installation only).
+  -- automatic_installation is DISABLED: its built-in adapter handlers use
+  -- .cmd batch wrappers on Windows which cannot be used as DAP executables.
+  -- Each language plugin configures its own adapter with the correct binary path.
   {
     "jay-babu/mason-nvim-dap.nvim",
-    dependencies = {
-      "williamboman/mason.nvim", -- Install and manage external tools
-    },
+    dependencies = { "williamboman/mason.nvim" },
     opts = {
-      automatic_installation = true,
-      ensure_installed = { "coreclr" }, -- Install netcoredbg for C#
+      automatic_installation = false,
+      ensure_installed = {},
     },
   },
 }

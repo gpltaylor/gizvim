@@ -1,5 +1,15 @@
+-- ============================================================
+-- C# support: roslyn.nvim (LSP) + netcoredbg (DAP)
+-- ============================================================
+-- Key design decisions:
+--   • roslyn.nvim uses config (not init) so cmp-nvim-lsp is guaranteed loaded
+--   • DAP adapter uses the Mason .exe directly — never the .cmd batch wrapper
+--     (Windows cannot use .cmd files as DAP executables)
+--   • mason-nvim-dap is NOT used for coreclr; we configure the adapter manually
+--   • Keymaps live in core/keymaps.lua FileType autocmd (F1-F9, LSP navigation)
+-- ============================================================
 return {
-  -- Treesitter for C#
+  -- Treesitter grammar for C#
   {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
@@ -9,23 +19,16 @@ return {
     end,
   },
 
-  -- Mason: only csharpier formatter and netcoredbg debugger (roslyn.nvim self-installs)
-  {
-    "williamboman/mason.nvim",
-    opts = {
-      ensure_installed = { "netcoredbg", "csharpier" },
-    },
-  },
-
-  -- roslyn.nvim: official Roslyn C# language server (replaces omnisharp)
-  -- Install the server: :MasonInstall roslyn (requires custom registry in mason.lua)
+  -- roslyn.nvim: Microsoft Roslyn C# language server (replaces OmniSharp)
+  -- Server installation: :MasonInstall roslyn  (needs Crashdummyy/mason-registry in mason.lua)
   {
     "seblyng/roslyn.nvim",
     ft = "cs",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    init = function()
-      -- LSP settings via Neovim 0.11+ vim.lsp.config API.
-      -- Keymaps are in keymaps.lua FileType autocmd (more reliable than on_attach).
+    -- cmp-nvim-lsp must be loaded before config runs so capabilities are available
+    dependencies = { "nvim-lua/plenary.nvim", "hrsh7th/cmp-nvim-lsp" },
+    config = function()
+      -- vim.lsp.config sets per-server LSP options (Neovim 0.11+ API).
+      -- Must be called before the server attaches; config() timing is correct.
       vim.lsp.config("roslyn", {
         capabilities = require("cmp_nvim_lsp").default_capabilities(),
         settings = {
@@ -50,18 +53,20 @@ return {
           },
         },
       })
+
+      require("roslyn").setup({
+        -- Search parent directories for .sln files (useful in mono-repo layouts)
+        broad_search = true,
+        filewatching = "auto",
+        extensions = {
+          -- Razor disabled: avoids "no path provided" noise on non-web projects
+          razor = { enabled = false },
+        },
+      })
     end,
-    opts = {
-      broad_search = true,   -- search parent dirs for .sln files
-      filewatching = "auto",
-      extensions = {
-        -- Disable razor: suppresses "no path provided" warnings for non-web projects
-        razor = { enabled = false },
-      },
-    },
   },
 
-  -- CSharpier formatter via conform
+  -- CSharpier: opinionated C# formatter via conform.nvim
   {
     "stevearc/conform.nvim",
     optional = true,
@@ -73,45 +78,95 @@ return {
     },
   },
 
-  -- DAP: netcoredbg for C# debugging
-  -- Uses init (not config) so it doesn't overwrite nvim-dap.lua's main config
+  -- C# debugging via netcoredbg
+  -- IMPORTANT: we bypass mason-nvim-dap's coreclr handler because on Windows
+  -- it resolves netcoredbg to a .cmd batch wrapper which jobstart() cannot
+  -- use as a DAP executable. We point directly at the Mason package .exe.
   {
     "mfussenegger/nvim-dap",
     optional = true,
-    dependencies = { "jay-babu/mason-nvim-dap.nvim" },
-    init = function()
-      -- Defer until after nvim-dap's own config has run
-      vim.api.nvim_create_autocmd("FileType", {
-        pattern = "cs",
-        once = true,
-        callback = function()
-          local dap = require("dap")
-          if dap.adapters.coreclr then return end  -- already configured
-          dap.adapters.coreclr = {
-            type = "executable",
-            command = vim.fn.exepath("netcoredbg") ~= "" and vim.fn.exepath("netcoredbg")
-              or vim.fn.stdpath("data") .. "/mason/bin/netcoredbg",
-            args = { "--interpreter=vscode" },
-          }
-          dap.configurations.cs = {
-            {
-              type = "coreclr",
-              name = "Launch .NET",
-              request = "launch",
-              program = function()
-                local cwd = vim.fn.getcwd()
-                local dlls = vim.fn.glob(cwd .. "/bin/Debug/**/*.dll", false, true)
-                for _, dll in ipairs(dlls) do
-                  if not dll:match("%.Tests?%.dll$") and not dll:match("xunit") and not dll:match("testhost") then
-                    return dll
-                  end
-                end
-                return vim.fn.input("Path to dll: ", cwd .. "/bin/Debug/", "file")
-              end,
-            },
-          }
-        end,
-      })
+    config = function()
+      local dap = require("dap")
+
+      -- Resolve the real netcoredbg executable (never the .cmd shim)
+      local function find_netcoredbg()
+        local mason_exe = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
+        if vim.fn.executable(mason_exe) == 1 then
+          return mason_exe
+        end
+        -- System-installed (e.g. c:\bin\netcoredbg.exe)
+        local found = vim.fn.exepath("netcoredbg")
+        if found ~= "" and not found:match("%.cmd$") then
+          return found
+        end
+        return "netcoredbg" -- last resort: bare name on PATH
+      end
+
+      dap.adapters.coreclr = {
+        type = "executable",
+        command = find_netcoredbg(),
+        args = { "--interpreter=vscode" },
+        options = { detached = false }, -- required on Windows; prevents orphan processes
+      }
+
+      -- Base launch/attach configurations
+      local configs = {
+        {
+          type    = "coreclr",
+          name    = "Launch: auto-detect DLL",
+          request = "launch",
+          program = function()
+            local ok, vimspector = pcall(require, "utils.vimspector_config")
+            if ok then
+              local dll = vimspector.find_main_dll()
+              if dll and dll ~= "" then
+                vim.notify("netcoredbg launching: " .. vim.fn.fnamemodify(dll, ":t"), vim.log.levels.INFO)
+                return dll
+              end
+            end
+            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+          end,
+          cwd           = vim.fn.getcwd,
+          env           = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode    = false,
+          stopAtEntry   = false,
+        },
+        {
+          type    = "coreclr",
+          name    = "Launch: select DLL",
+          request = "launch",
+          program = function()
+            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+          end,
+          cwd           = vim.fn.getcwd,
+          env           = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode    = false,
+          stopAtEntry   = false,
+        },
+        {
+          type      = "coreclr",
+          name      = "Attach to process",
+          request   = "attach",
+          justMyCode = false,
+          processId  = function()
+            -- dap.utils.pick_process gives a proper picker UI
+            return require("dap.utils").pick_process()
+          end,
+        },
+      }
+
+      -- Prepend any project-level configs from .vimspector.json
+      local ok, vimspector = pcall(require, "utils.vimspector_config")
+      if ok then
+        local project_configs = vimspector.get_project_configs()
+        if #project_configs > 0 then
+          for i, cfg in ipairs(project_configs) do
+            table.insert(configs, i, cfg)
+          end
+        end
+      end
+
+      dap.configurations.cs = configs
     end,
   },
 }
