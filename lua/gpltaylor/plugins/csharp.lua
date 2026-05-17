@@ -81,14 +81,18 @@ return {
       -- Prefer the system PATH install (was working before Mason was set up).
       local function find_netcoredbg()
         local found = vim.fn.exepath("netcoredbg")
-        -- Skip .cmd shims; prefer real .exe on PATH (e.g. c:\bin\netcoredbg.exe)
-        if found ~= "" and not found:match("%.cmd$") then
+        -- exepath() may return the Mason .cmd shim (e.g. netcoredbg.CMD on Windows).
+        -- .cmd batch files cannot be used as DAP adapter executables via jobstart().
+        -- Use lower() so the check works regardless of .cmd / .CMD / .Cmd casing.
+        if found ~= "" and not found:lower():match("%.cmd$") then
           return found
         end
+        -- Fall back to the real .exe inside the Mason package directory.
         local mason_exe = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
-        if vim.fn.executable(mason_exe) == 1 then
+        if vim.fn.filereadable(mason_exe) == 1 then
           return mason_exe
         end
+        -- Last resort: bare name (may work if c:\bin is on PATH without the shim).
         return "netcoredbg"
       end
 
