@@ -110,6 +110,15 @@ return {
       -- slashes. If the DLL/cwd paths use backslashes while breakpoint sources
       -- use forward slashes, netcoredbg's PDB source-path matching breaks.
       -- Keeping everything as forward slashes is consistent and works on Windows.
+      --
+      -- sourceFileMap: PDB embeds source paths with Windows backslashes.
+      -- Map the workspace backslash path → forward-slash so netcoredbg can
+      -- match the setBreakpoints source path from Neovim against PDB entries.
+      local function make_source_file_map()
+        local cwd = vim.fn.getcwd()           -- "D:/redbear/honeycomb/..."
+        local pdb_path = cwd:gsub("/", "\\")  -- "D:\redbear\honeycomb\..."
+        return { [pdb_path] = cwd }
+      end
 
       local configs = {
         {
@@ -141,6 +150,7 @@ return {
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
           stopAtEntry      = false,
+          sourceFileMap    = make_source_file_map,
         },
         {
           type    = "coreclr",
@@ -153,6 +163,7 @@ return {
           env              = { ASPNETCORE_ENVIRONMENT = "Development" },
           justMyCode       = false,
           stopAtEntry      = false,
+          sourceFileMap    = make_source_file_map,
         },
         {
           -- Useful for attaching to a running process (e.g. VSTEST_HOST_DEBUG scenarios)

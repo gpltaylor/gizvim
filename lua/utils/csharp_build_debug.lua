@@ -103,6 +103,11 @@ function M.build_and_debug()
   -- Do NOT convert to backslashes. Neovim's breakpoint source paths always
   -- use forward slashes; if program/cwd use backslashes the path matching in
   -- netcoredbg's PDB lookup breaks. Keep forward slashes throughout.
+  --
+  -- sourceFileMap: tell netcoredbg to remap PDB backslash paths to the
+  -- forward-slash paths Neovim uses, so breakpoints can be matched.
+  local cwd = vim.fn.getcwd()
+  local source_file_map = { [cwd:gsub("/", "\\")] = cwd }
 
   vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
 
@@ -117,6 +122,7 @@ function M.build_and_debug()
     cwd              = dll_dir,
     env              = { ASPNETCORE_ENVIRONMENT = "Development" },
     justMyCode       = false,
+    sourceFileMap    = source_file_map,
   }
   dap.run(quick_config)
 end
