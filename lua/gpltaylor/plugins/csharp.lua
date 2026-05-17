@@ -3,9 +3,11 @@
 -- ============================================================
 -- Key design decisions:
 --   • roslyn.nvim uses config (not init) so cmp-nvim-lsp is guaranteed loaded
---   • DAP adapter uses the Mason .exe directly — never the .cmd batch wrapper
---     (Windows cannot use .cmd files as DAP executables)
---   • mason-nvim-dap is NOT used for coreclr; we configure the adapter manually
+--   • DAP adapter is configured inside roslyn's config — this is reliable because
+--     lazy.nvim only runs ONE config per plugin; optional nvim-dap specs have
+--     their config silently ignored when nvim-dap.lua already defines one
+--   • Adapter uses the Mason .exe directly — never the .cmd batch wrapper
+--     (Windows cannot use .cmd files as DAP executables via jobstart)
 --   • Keymaps live in core/keymaps.lua FileType autocmd (F1-F9, LSP navigation)
 -- ============================================================
 return {
@@ -24,11 +26,17 @@ return {
   {
     "seblyng/roslyn.nvim",
     ft = "cs",
-    -- cmp-nvim-lsp must be loaded before config runs so capabilities are available
-    dependencies = { "nvim-lua/plenary.nvim", "hrsh7th/cmp-nvim-lsp" },
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "hrsh7th/cmp-nvim-lsp",
+      -- nvim-dap listed here so it is loaded before config() runs;
+      -- the coreclr adapter is set up below (cannot use a separate optional
+      -- nvim-dap spec because lazy.nvim only executes one config per plugin)
+      "mfussenegger/nvim-dap",
+    },
     config = function()
+      -- ── LSP ──────────────────────────────────────────────────────────────
       -- vim.lsp.config sets per-server LSP options (Neovim 0.11+ API).
-      -- Must be called before the server attaches; config() timing is correct.
       vim.lsp.config("roslyn", {
         capabilities = require("cmp_nvim_lsp").default_capabilities(),
         settings = {
@@ -55,61 +63,40 @@ return {
       })
 
       require("roslyn").setup({
-        -- Search parent directories for .sln files (useful in mono-repo layouts)
-        broad_search = true,
+        broad_search = true,   -- search parent dirs for .sln files
         filewatching = "auto",
         extensions = {
-          -- Razor disabled: avoids "no path provided" noise on non-web projects
-          razor = { enabled = false },
+          razor = { enabled = false }, -- avoids noise on non-web projects
         },
       })
-    end,
-  },
 
-  -- CSharpier: opinionated C# formatter via conform.nvim
-  {
-    "stevearc/conform.nvim",
-    optional = true,
-    opts = {
-      formatters_by_ft = { cs = { "csharpier" } },
-      formatters = {
-        csharpier = { command = "dotnet-csharpier", args = { "--write-stdout" } },
-      },
-    },
-  },
-
-  -- C# debugging via netcoredbg
-  -- IMPORTANT: we bypass mason-nvim-dap's coreclr handler because on Windows
-  -- it resolves netcoredbg to a .cmd batch wrapper which jobstart() cannot
-  -- use as a DAP executable. We point directly at the Mason package .exe.
-  {
-    "mfussenegger/nvim-dap",
-    optional = true,
-    config = function()
+      -- ── DAP (coreclr / netcoredbg) ───────────────────────────────────────
+      -- Configured here rather than in a separate optional nvim-dap spec
+      -- because lazy.nvim only runs one config per plugin.
       local dap = require("dap")
 
-      -- Resolve the real netcoredbg executable (never the .cmd shim)
+      -- Resolve the real netcoredbg executable; never the .cmd shim.
+      -- The Mason .cmd wrapper is a batch script and cannot be used as a
+      -- DAP adapter command (jobstart() on Windows won't exec it).
       local function find_netcoredbg()
         local mason_exe = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
         if vim.fn.executable(mason_exe) == 1 then
           return mason_exe
         end
-        -- System-installed (e.g. c:\bin\netcoredbg.exe)
         local found = vim.fn.exepath("netcoredbg")
         if found ~= "" and not found:match("%.cmd$") then
           return found
         end
-        return "netcoredbg" -- last resort: bare name on PATH
+        return "netcoredbg"
       end
 
       dap.adapters.coreclr = {
-        type = "executable",
+        type    = "executable",
         command = find_netcoredbg(),
-        args = { "--interpreter=vscode" },
-        options = { detached = false }, -- required on Windows; prevents orphan processes
+        args    = { "--interpreter=vscode" },
+        options = { detached = false }, -- must be false on Windows
       }
 
-      -- Base launch/attach configurations
       local configs = {
         {
           type    = "coreclr",
@@ -126,10 +113,10 @@ return {
             end
             return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
-          cwd           = vim.fn.getcwd,
-          env           = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode    = false,
-          stopAtEntry   = false,
+          cwd         = vim.fn.getcwd,
+          env         = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode  = false,
+          stopAtEntry = false,
         },
         {
           type    = "coreclr",
@@ -138,18 +125,17 @@ return {
           program = function()
             return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
-          cwd           = vim.fn.getcwd,
-          env           = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode    = false,
-          stopAtEntry   = false,
+          cwd         = vim.fn.getcwd,
+          env         = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode  = false,
+          stopAtEntry = false,
         },
         {
-          type      = "coreclr",
-          name      = "Attach to process",
-          request   = "attach",
+          type       = "coreclr",
+          name       = "Attach to process",
+          request    = "attach",
           justMyCode = false,
           processId  = function()
-            -- dap.utils.pick_process gives a proper picker UI
             return require("dap.utils").pick_process()
           end,
         },
@@ -159,15 +145,25 @@ return {
       local ok, vimspector = pcall(require, "utils.vimspector_config")
       if ok then
         local project_configs = vimspector.get_project_configs()
-        if #project_configs > 0 then
-          for i, cfg in ipairs(project_configs) do
-            table.insert(configs, i, cfg)
-          end
+        for i, cfg in ipairs(project_configs) do
+          table.insert(configs, i, cfg)
         end
       end
 
       dap.configurations.cs = configs
     end,
+  },
+
+  -- CSharpier: opinionated C# formatter via conform.nvim
+  {
+    "stevearc/conform.nvim",
+    optional = true,
+    opts = {
+      formatters_by_ft = { cs = { "csharpier" } },
+      formatters = {
+        csharpier = { command = "dotnet-csharpier", args = { "--write-stdout" } },
+      },
+    },
   },
 }
 
