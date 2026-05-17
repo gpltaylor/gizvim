@@ -78,14 +78,16 @@ return {
       -- Resolve the real netcoredbg executable; never the .cmd shim.
       -- The Mason .cmd wrapper is a batch script and cannot be used as a
       -- DAP adapter command (jobstart() on Windows won't exec it).
+      -- Prefer the system PATH install (was working before Mason was set up).
       local function find_netcoredbg()
+        local found = vim.fn.exepath("netcoredbg")
+        -- Skip .cmd shims; prefer real .exe on PATH (e.g. c:\bin\netcoredbg.exe)
+        if found ~= "" and not found:match("%.cmd$") then
+          return found
+        end
         local mason_exe = vim.fn.stdpath("data") .. "/mason/packages/netcoredbg/netcoredbg/netcoredbg.exe"
         if vim.fn.executable(mason_exe) == 1 then
           return mason_exe
-        end
-        local found = vim.fn.exepath("netcoredbg")
-        if found ~= "" and not found:match("%.cmd$") then
-          return found
         end
         return "netcoredbg"
       end
@@ -94,8 +96,21 @@ return {
         type    = "executable",
         command = find_netcoredbg(),
         args    = { "--interpreter=vscode" },
-        options = { detached = false }, -- must be false on Windows
+        -- options.detached intentionally omitted: nvim-dap passes adapter.options
+        -- to jobstart() which uses the key 'detach' (not 'detached'), so setting
+        -- detached here is a no-op. Windows jobstart already defaults to detach=false.
       }
+
+      -- Helper: normalize a path to backslashes for netcoredbg on Windows.
+      -- The find_main_dll() helper returns forward-slash paths; netcoredbg's
+      -- PDB source-path matching can fail if the program path uses a different
+      -- separator than the source breakpoint paths.
+      local function win_path(p)
+        if vim.fn.has("win32") == 1 then
+          return p:gsub("/", "\\")
+        end
+        return p
+      end
 
       local configs = {
         {
@@ -108,29 +123,42 @@ return {
               local dll = vimspector.find_main_dll()
               if dll and dll ~= "" then
                 vim.notify("netcoredbg launching: " .. vim.fn.fnamemodify(dll, ":t"), vim.log.levels.INFO)
-                return dll
+                return win_path(dll)
               end
             end
-            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "\\bin\\Debug\\", "file")
           end,
-          cwd         = vim.fn.getcwd,
-          env         = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode  = false,
-          stopAtEntry = false,
+          -- cwd = DLL directory so appsettings.json (copied there by build) is found
+          cwd = function()
+            local ok, vimspector = pcall(require, "utils.vimspector_config")
+            if ok then
+              local dll = vimspector.find_main_dll()
+              if dll and dll ~= "" then
+                return win_path(vim.fn.fnamemodify(dll, ":h"))
+              end
+            end
+            return vim.fn.getcwd()
+          end,
+          env              = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode       = false,
+          stopAtEntry      = false,
+          requireExactSource = false, -- tolerate minor path normalisation differences
         },
         {
           type    = "coreclr",
           name    = "Launch: select DLL",
           request = "launch",
           program = function()
-            return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+            return win_path(vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "\\bin\\Debug\\", "file"))
           end,
-          cwd         = vim.fn.getcwd,
-          env         = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode  = false,
-          stopAtEntry = false,
+          cwd              = vim.fn.getcwd,
+          env              = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode       = false,
+          stopAtEntry      = false,
+          requireExactSource = false,
         },
         {
+          -- Useful for attaching to a running process (e.g. VSTEST_HOST_DEBUG scenarios)
           type       = "coreclr",
           name       = "Attach to process",
           request    = "attach",

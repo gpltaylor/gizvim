@@ -92,46 +92,39 @@ function M.build_and_debug()
   -- Build succeeded, now find and launch the DLL
   vim.notify("🔍 Looking for executable...", vim.log.levels.INFO)
   
-  -- Check if we have vimspector config
-  if vimspector_utils.has_vimspector_config() then
-    -- Try quick launch first
-    local main_dll = vimspector_utils.find_main_dll()
-    if main_dll then
-      vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
-      -- Create a quick launch config
-      local quick_config = {
-        type = "coreclr",
-        name = "Quick Launch (Build & Debug)",
-        request = "launch",
-        program = main_dll,
-        cwd = vim.fn.getcwd(),
-        env = { ASPNETCORE_ENVIRONMENT = 'Development' },
-        justMyCode = false,
-      }
-      dap.run(quick_config)
-      return
-    end
-  end
-  
-  -- Fallback: try to find DLL after build
   local main_dll = vimspector_utils.find_main_dll()
-  if main_dll then
-    vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
-    local quick_config = {
-      type = "coreclr",
-      name = "Quick Launch (Build & Debug)",
-      request = "launch",
-      program = main_dll,
-      cwd = vim.fn.getcwd(),
-      env = { ASPNETCORE_ENVIRONMENT = 'Development' },
-      justMyCode = false,
-    }
-    dap.run(quick_config)
-  else
-    -- No DLL found, show selection menu
+  
+  if not main_dll or main_dll == "" then
     vim.notify("⚠️  No executable found, showing debug menu...", vim.log.levels.WARN)
     dap.continue()
+    return
   end
+
+  -- Normalize to backslashes on Windows. find_main_dll() returns forward-slash
+  -- paths; netcoredbg's PDB source-path matching can fail if the program path
+  -- uses a different separator than the breakpoint source paths.
+  if vim.fn.has("win32") == 1 then
+    main_dll = main_dll:gsub("/", "\\")
+  end
+
+  vim.notify("🚀 Launching: " .. vim.fn.fnamemodify(main_dll, ":t"), vim.log.levels.INFO)
+
+  -- cwd = the directory containing the DLL.
+  -- dotnet build copies appsettings.json etc. into bin/Debug/net*/,
+  -- so the DLL directory is the correct working directory for the launched app.
+  local dll_dir = vim.fn.fnamemodify(main_dll, ":h")
+
+  local quick_config = {
+    type             = "coreclr",
+    name             = "Quick Launch (Build & Debug)",
+    request          = "launch",
+    program          = main_dll,
+    cwd              = dll_dir,
+    env              = { ASPNETCORE_ENVIRONMENT = "Development" },
+    justMyCode       = false,
+    requireExactSource = false,
+  }
+  dap.run(quick_config)
 end
 
 return M
