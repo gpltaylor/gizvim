@@ -9,6 +9,15 @@
 --   • Adapter uses the Mason .exe directly — never the .cmd batch wrapper
 --     (Windows cannot use .cmd files as DAP executables via jobstart)
 --   • Keymaps live in core/keymaps.lua FileType autocmd (F1-F9, LSP navigation)
+--
+--   Note: Sometimes F5 will not work as it can't find the DLL or code to launch form. 
+--   In this case you can run the lanch manually.
+--   require("dap").run({type="coreclr",request="launch",
+--    name="test",
+--    program="D:/redbear/honeycomb/RedBear.GizHex/bin/Debug/net10.0/RedBear.GizHex.dll",
+--    cwd="D:/redbear/honeycomb/RedBear.GizHex",
+--    stopAtEntry=true,
+--    justMyCode=false})
 -- ============================================================
 return {
   -- Treesitter grammar for C#
