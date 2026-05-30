@@ -136,9 +136,10 @@ return {
             end
             return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
-          cwd              = vim.fn.getcwd,
-          env              = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode       = false,
+          cwd          = vim.fn.getcwd,
+          env          = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode   = false,
+          stopAtEntry  = true,   -- pause before user code so PDB loads and breakpoints verify
         },
         {
           type    = "coreclr",
@@ -147,9 +148,10 @@ return {
           program = function()
             return vim.fn.input("Path to DLL: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
           end,
-          cwd              = vim.fn.getcwd,
-          env              = { ASPNETCORE_ENVIRONMENT = "Development" },
-          justMyCode       = false,
+          cwd         = vim.fn.getcwd,
+          env         = { ASPNETCORE_ENVIRONMENT = "Development" },
+          justMyCode  = false,
+          stopAtEntry = true,
         },
         {
           -- Useful for attaching to a running process (e.g. VSTEST_HOST_DEBUG scenarios)

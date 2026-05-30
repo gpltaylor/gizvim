@@ -111,6 +111,7 @@ function M.build_and_debug()
     cwd                = cwd,
     env                = { ASPNETCORE_ENVIRONMENT = "Development" },
     justMyCode         = false,
+    stopAtEntry        = true,   -- pause before user code so PDB loads and breakpoints verify
     requireExactSource = false,
     sourceFileMap      = { [cwd:gsub("/", "\\")] = cwd:gsub("\\", "/") },
   }
